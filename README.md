@@ -1,3 +1,3 @@
-# Myhealth NextGen
+# MyHealth NextGen
 [MyHealth](https://github.com/devldavydov/myhealth) version with ai-agent
 
