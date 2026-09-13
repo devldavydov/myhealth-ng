@@ -1,0 +1,22 @@
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #536965;
+  font-size: 13px;
+}
+
+.user-badge span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: white;
+  background: #6b8f89;
+  font-weight: 800;
+}
+
+@media (max-width: 620px) {
+  .user-badge strong { display: none; }
+}
