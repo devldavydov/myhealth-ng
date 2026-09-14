@@ -1,0 +1,23 @@
+[Unit]
+Description=MyHealth API
+After=network.target
+
+[Service]
+Type=simple
+User=myhealth
+Group=myhealth
+WorkingDirectory=/var/lib/myhealth
+EnvironmentFile=/etc/myhealth/myhealth.env
+Environment=GIN_MODE=release
+ExecStartPre=/usr/bin/test -x /opt/myhealth/current/server/myhealth-server
+ExecStart=/opt/myhealth/current/server/myhealth-server
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/myhealth
+
+[Install]
+WantedBy=multi-user.target

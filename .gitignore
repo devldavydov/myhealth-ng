@@ -1,7 +1,8 @@
-node_modules/
+client/node_modules/
+client/dist/
 artifacts/
 dist/
-coverage/
+client/coverage/
 .env
 .DS_Store
 *.log

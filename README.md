@@ -1,15 +1,21 @@
 # MyHealth NextGen
 
 SPA-каркас для хранения показателей здоровья: React + Vite на клиенте и
-Express JSON API на сервере.
+Go + Gin JSON API на сервере.
 
 ## Локальный запуск
 
-Требуется Node.js 20+.
+Требуются Go 1.26.5 и Node.js 20+ (Node.js нужен только для frontend).
 
 ```bash
-npm install
-npm run dev
+npm --prefix client install
+```
+
+Запустите API и frontend в двух терминалах:
+
+```bash
+go run ./cmd/server
+npm --prefix client run dev
 ```
 
 Интерфейс: http://localhost:5173. API: http://localhost:3000/api.
@@ -20,9 +26,11 @@ npm run dev
 - `POST /api/measurements` — создание измерения.
 
 ```bash
-npm test          # тесты клиента и сервера
-npm run build     # production-сборка
-npm start         # запуск собранного API
+go test ./...                          # тесты API
+npm --prefix client test              # тесты frontend
+
+go build -o dist/myhealth-server ./cmd/server
+npm --prefix client run build
 ```
 
 В development-режиме приложение использует локального тестового пользователя.
@@ -44,5 +52,5 @@ sudo ./deployment/generate-client-cert.sh "Иван Иванов"
 
 Сейчас медицинские измерения хранятся в памяти. API зависит от интерфейса
 `MeasurementRepository`: для перехода на PostgreSQL нужно добавить реализацию
-этого интерфейса через `pg` или ORM и передать её в `createApp`, не меняя
-маршруты и клиент. Настройки окружения перечислены в `.env.example`.
+этого интерфейса в Go и передать её в `httpapi.NewRouter`, не меняя маршруты и
+клиент. Настройки окружения перечислены в `.env.example`.

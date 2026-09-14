@@ -59,7 +59,7 @@ rm -f /usr/local/sbin/myhealth-upgrade \
   /usr/local/sbin/myhealth-uninstall
 rm -rf -- /usr/local/lib/myhealth-deployment
 
-echo "MyHealth удалён. Пакеты nginx, Node.js и OpenSSL оставлены, поскольку они могут использоваться другими приложениями."
+echo "MyHealth удалён. Пакеты Nginx и OpenSSL оставлены, поскольку они могут использоваться другими приложениями."
 if [[ $KEEP_PKI == true ]]; then
   echo "PKI сохранена в /etc/myhealth/pki."
 else

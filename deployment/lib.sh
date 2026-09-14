@@ -66,16 +66,12 @@ validate_staged_release() {
     echo "Frontend-бандл повреждён: отсутствует index.html" >&2
     return 1
   fi
-  if [[ ! -f $staging_dir/server/server.cjs ]]; then
-    if [[ -f $staging_dir/server/server.mjs ]]; then
-      echo "Backend-бандл устарел: найден server.mjs вместо server.cjs. Пересоберите релиз текущим build-bundles.sh" >&2
-    else
-      echo "Backend-бандл повреждён: отсутствует server.cjs" >&2
-    fi
+  if [[ ! -s $staging_dir/server/myhealth-server ]]; then
+    echo "Backend-бандл повреждён: отсутствует бинарник myhealth-server" >&2
     return 1
   fi
-  if [[ ! -f $staging_dir/client/VERSION || ! -f $staging_dir/server/VERSION ]]; then
-    echo "В бандле отсутствует VERSION" >&2
+  if [[ ! -f $staging_dir/client/VERSION || ! -f $staging_dir/server/VERSION || ! -f $staging_dir/server/PLATFORM ]]; then
+    echo "В бандле отсутствует VERSION или PLATFORM" >&2
     return 1
   fi
 
@@ -86,7 +82,20 @@ validate_staged_release() {
     return 1
   fi
 
-  node --check "$staging_dir/server/server.cjs" >/dev/null
+  local platform machine expected_arch
+  platform=$(tr -d '\r\n' < "$staging_dir/server/PLATFORM")
+  machine=$(uname -m)
+  case "$machine" in
+    x86_64) expected_arch=amd64 ;;
+    aarch64|arm64) expected_arch=arm64 ;;
+    i386|i486|i586|i686) expected_arch=386 ;;
+    armv7l) expected_arch=arm ;;
+    *) expected_arch=$machine ;;
+  esac
+  if [[ $platform != "linux/$expected_arch" ]]; then
+    echo "Backend собран для $platform, сервер использует linux/$expected_arch" >&2
+    return 1
+  fi
 }
 
 install_release() {
@@ -114,6 +123,7 @@ install_release() {
   chown -R root:root "$staging_dir"
   find "$staging_dir" -type d -exec chmod 0755 {} +
   find "$staging_dir" -type f -exec chmod 0644 {} +
+  chmod 0755 "$staging_dir/server/myhealth-server"
   mv "$staging_dir" "$release_dir"
   trap - RETURN
 
