@@ -242,6 +242,84 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .text-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 7px 9px; border: 0; color: #28776e; background: transparent; font-size: 12px; font-weight: 800; text-decoration: none; cursor: pointer; }
 .text-button.danger { color: #ad4d58; }
 
+.bundle-card .food-card-heading p { text-transform: none; }
+.bundle-picker-field { display: grid; gap: 8px; }
+.bundle-picker-field > label {
+  color: #536965;
+  font-size: 13px;
+  font-weight: 700;
+}
+.bundle-select__control {
+  min-height: 46px !important;
+  border-color: #ccdad6 !important;
+  border-radius: 10px !important;
+  background: #fbfdfc !important;
+  box-shadow: none !important;
+}
+.bundle-select__control--is-focused {
+  border-color: #2b9185 !important;
+  box-shadow: 0 0 0 3px #ddf1ed !important;
+}
+.bundle-select__menu {
+  z-index: 20 !important;
+  overflow: hidden;
+  border: 1px solid #dce8e4;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 35px rgba(34, 67, 61, .14) !important;
+}
+.bundle-select__group-heading {
+  color: #748b86 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .1em;
+}
+.bundle-select__option { display: flex !important; align-items: center; gap: 10px; }
+.bundle-select__option--is-focused { background: #e7f3ef !important; }
+.bundle-select__option--is-selected { color: #173330 !important; background: #d5ece7 !important; }
+.search-option-kind {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.search-option-kind.food { color: #2d7068; background: #dcefeb; }
+.search-option-kind.bundle { color: #705c2d; background: #f2e9cf; }
+.search-option-copy { display: grid; min-width: 0; gap: 2px; }
+.search-option-copy strong, .search-option-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-option-copy strong { font-size: 13px; }
+.search-option-copy small { color: #758985; font-size: 10px; }
+.bundle-items { display: grid; gap: 10px; }
+.bundle-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  align-items: start;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dfe9e6;
+  border-radius: 13px;
+  background: #f8fbfa;
+}
+.bundle-item-copy { display: grid; align-self: center; min-width: 0; gap: 3px; }
+.bundle-item-copy strong, .bundle-item-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bundle-item-copy small { color: #758985; font-size: 10px; }
+.bundle-item-row label { font-size: 11px; }
+.bundle-item-row input { min-height: 42px; padding: 9px 10px; }
+.bundle-item-row .text-button { align-self: center; }
+.bundle-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  color: #315e57;
+  background: #e6f3f0;
+  font-size: 12px;
+}
+.bundle-total span { font-weight: 700; }
+
 .weight-page-header { margin-bottom: 28px; }
 .weight-panel {
   min-width: 0;
@@ -372,11 +450,17 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .weight-history { margin-top: 30px; }
   .weight-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; padding: 12px 10px 12px 15px; }
   .weight-row .text-button { grid-column: 1 / -1; justify-self: stretch; border-top: 1px solid #edf2f0; }
+  .bundle-item-row { grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; }
+  .bundle-item-row .text-button { grid-column: 1 / -1; border-top: 1px solid #e2ebe8; }
+  .bundle-total { display: grid; gap: 5px; }
 }
 
 @media (max-width: 380px) {
+  nav a { padding-inline: 5px; font-size: 11px; }
   .food-card-heading { flex-direction: column; }
   .food-card-heading > strong { align-self: flex-start; }
+  .bundle-item-row { grid-template-columns: 1fr; }
+  .bundle-item-row .text-button { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

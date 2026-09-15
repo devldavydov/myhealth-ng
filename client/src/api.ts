@@ -10,6 +10,38 @@ export interface Food {
 }
 
 export type FoodData = Omit<Food, "key">;
+
+export interface BundleTotals {
+  weight: number;
+  cal: number;
+  protein: number;
+  fat: number;
+  carb: number;
+}
+
+export interface BundleSummary {
+  key: string;
+  name: string;
+  itemCount: number;
+  totals: BundleTotals;
+}
+
+export interface BundleItem {
+  food: Food;
+  weight: number;
+}
+
+export interface Bundle {
+  key: string;
+  name: string;
+  items: BundleItem[];
+  totals: BundleTotals;
+}
+
+export interface BundleData {
+  name: string;
+  items: Array<{ foodKey: string; weight: number }>;
+}
 export interface WeightEntry {
   dt: string;
   value: number;
@@ -68,6 +100,44 @@ export async function deleteFood(key: string): Promise<void> {
   const response = await fetch(`/api/food/${encodeURIComponent(key)}`, { method: "DELETE" });
   if (response.ok) return;
   let message = "Не удалось удалить продукт";
+  try {
+    const body = (await response.json()) as { error?: string };
+    message = body.error ?? message;
+  } catch {
+    // Keep the fallback for a non-JSON proxy error.
+  }
+  throw new Error(message);
+}
+
+export async function getBundles(query = ""): Promise<BundleSummary[]> {
+  const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
+  return (await apiRequest<{ data: BundleSummary[] }>(`/api/bundle${suffix}`)).data;
+}
+
+export async function getBundleByKey(key: string): Promise<Bundle> {
+  return (await apiRequest<{ data: Bundle }>(`/api/bundle/${encodeURIComponent(key)}`)).data;
+}
+
+export async function createBundle(data: BundleData): Promise<Bundle> {
+  return (await apiRequest<{ data: Bundle }>("/api/bundle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })).data;
+}
+
+export async function updateBundle(key: string, data: BundleData): Promise<Bundle> {
+  return (await apiRequest<{ data: Bundle }>(`/api/bundle/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })).data;
+}
+
+export async function deleteBundle(key: string): Promise<void> {
+  const response = await fetch(`/api/bundle/${encodeURIComponent(key)}`, { method: "DELETE" });
+  if (response.ok) return;
+  let message = "Не удалось удалить бандл";
   try {
     const body = (await response.json()) as { error?: string };
     message = body.error ?? message;

@@ -10,6 +10,7 @@ import (
 var (
 	ErrFoodNotFound = errors.New("food not found")
 	ErrFoodConflict = errors.New("food key conflict")
+	ErrFoodInUse    = errors.New("food is used in bundle")
 )
 
 type FoodRepository interface {

@@ -1,9 +1,47 @@
 package legacyimport
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestDatasetLoadersUseCurrentExportNames(t *testing.T) {
+	loaders := datasetLoaders(Config{
+		DataDirectory: "/legacy",
+		UserID:        "local-user",
+	})
+
+	food, ok := loaders[0].(foodLoader)
+	if !ok || food.path != filepath.Join("/legacy", "food.csv") {
+		t.Fatalf("unexpected food loader: %#v", loaders[0])
+	}
+	weight, ok := loaders[1].(weightLoader)
+	if !ok || weight.path != filepath.Join("/legacy", "weight.csv") {
+		t.Fatalf("unexpected weight loader: %#v", loaders[1])
+	}
+	bundle, ok := loaders[2].(bundleLoader)
+	if !ok || bundle.path != filepath.Join("/legacy", "bundle.csv") {
+		t.Fatalf("unexpected bundle loader: %#v", loaders[2])
+	}
+}
+
+func TestReadBundle(t *testing.T) {
+	input := `"key","foodkey","weight"
+"завтрак","сыр_гауда",48.0
+"завтрак","хлеб_бел",40.0
+`
+	rows, err := readBundle(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].key != "завтрак" || rows[0].foodKey != "сыр_гауда" || rows[0].weight != 48 {
+		t.Fatalf("unexpected rows: %+v", rows)
+	}
+	if legacyBundleUUID("завтрак") != legacyBundleUUID("завтрак") || legacyBundleUUID("завтрак") == legacyBundleUUID("обед") {
+		t.Fatal("legacy bundle UUID must be stable and key-specific")
+	}
+}
 
 func TestReadFood(t *testing.T) {
 	input := `"key","name","brand","cal100","prot100","fat100","carb100","comment"

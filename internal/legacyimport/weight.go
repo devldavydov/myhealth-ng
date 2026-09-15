@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const weightFileName = "weight"
+const weightFileName = "weight.csv"
 
 type weightLoader struct {
 	path   string
@@ -30,6 +30,10 @@ func newWeightLoader(dataDirectory, userID string) weightLoader {
 
 func (weightLoader) Name() string {
 	return "weight"
+}
+
+func (loader weightLoader) Path() string {
+	return loader.path
 }
 
 func (loader weightLoader) Import(ctx context.Context, transaction *sql.Tx) (int, error) {

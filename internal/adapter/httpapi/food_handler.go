@@ -172,6 +172,8 @@ func respondFoodError(ctx *gin.Context, err error) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "Продукт не найден"})
 	case errors.Is(err, port.ErrFoodConflict):
 		ctx.JSON(http.StatusConflict, gin.H{"error": "Продукт с таким ключом уже существует"})
+	case errors.Is(err, port.ErrFoodInUse):
+		ctx.JSON(http.StatusConflict, gin.H{"error": "Продукт используется в бандле. Сначала удалите его из всех бандлов"})
 	default:
 		_ = ctx.Error(err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Внутренняя ошибка сервера"})

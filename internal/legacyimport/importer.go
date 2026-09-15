@@ -6,7 +6,9 @@ package legacyimport
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -16,8 +18,9 @@ type Config struct {
 }
 
 type DatasetReport struct {
-	Name  string
-	Count int
+	Name    string
+	Count   int
+	Skipped bool
 }
 
 type Report struct {
@@ -29,6 +32,7 @@ type Report struct {
 // only provides one transaction and aggregates the report.
 type datasetLoader interface {
 	Name() string
+	Path() string
 	Import(context.Context, *sql.Tx) (int, error)
 }
 
@@ -47,6 +51,14 @@ func Import(ctx context.Context, db *sql.DB, config Config) (Report, error) {
 
 	report := Report{Datasets: make([]DatasetReport, 0)}
 	for _, loader := range datasetLoaders(config) {
+		_, err := os.Stat(loader.Path())
+		if errors.Is(err, os.ErrNotExist) {
+			report.Datasets = append(report.Datasets, DatasetReport{Name: loader.Name(), Skipped: true})
+			continue
+		}
+		if err != nil {
+			return Report{}, fmt.Errorf("inspect legacy dataset %q: %w", loader.Name(), err)
+		}
 		count, err := loader.Import(ctx, transaction)
 		if err != nil {
 			return Report{}, fmt.Errorf("import legacy dataset %q: %w", loader.Name(), err)
@@ -66,5 +78,6 @@ func datasetLoaders(config Config) []datasetLoader {
 	return []datasetLoader{
 		newFoodLoader(config.DataDirectory),
 		newWeightLoader(config.DataDirectory, config.UserID),
+		newBundleLoader(config.DataDirectory),
 	}
 }

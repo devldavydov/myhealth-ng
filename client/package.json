@@ -14,6 +14,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.2",
+    "react-select": "^5.10.2",
     "recharts": "^3.10.1",
     "vite": "^7.1.4"
   },

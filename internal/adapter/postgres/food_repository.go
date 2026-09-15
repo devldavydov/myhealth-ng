@@ -92,6 +92,10 @@ RETURNING key, name, brand, cal100, prot100, fat100, carb100, comment`,
 func (repository *FoodRepository) Delete(ctx context.Context, key string) error {
 	result, err := repository.db.ExecContext(ctx, `DELETE FROM food WHERE key = $1`, key)
 	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && (postgresError.Code == "23001" || postgresError.Code == "23503") {
+			return port.ErrFoodInUse
+		}
 		return fmt.Errorf("delete food: %w", err)
 	}
 	deleted, err := result.RowsAffected()

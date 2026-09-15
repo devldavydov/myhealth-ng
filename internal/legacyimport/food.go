@@ -43,6 +43,10 @@ func (foodLoader) Name() string {
 	return "food"
 }
 
+func (loader foodLoader) Path() string {
+	return loader.path
+}
+
 func (loader foodLoader) Import(ctx context.Context, transaction *sql.Tx) (int, error) {
 	rows, err := readFoodFile(loader.path)
 	if err != nil {

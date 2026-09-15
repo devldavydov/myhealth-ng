@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { mergeBundleItems } from "./pages/BundleFormPage";
 import { initialWeightRange } from "./pages/WeightPage";
 
 const user = { guid: "3f67c05f-7c9e-4cb5-b26a-f9ce5b065865", name: "Анна" };
@@ -15,6 +16,17 @@ const food = {
   carb100: 3,
   comment: "5%"
 };
+const bundleKey = "8c2cf7aa-44f4-49a4-aef0-e9087088c980";
+const bundleSummary = {
+  key: bundleKey,
+  name: "Завтрак",
+  itemCount: 1,
+  totals: { weight: 200, cal: 240, protein: 36, fat: 10, carb: 6 }
+};
+const bundle = {
+  ...bundleSummary,
+  items: [{ food, weight: 200 }]
+};
 
 function response(body: unknown, ok = true) {
   return { ok, json: async () => body };
@@ -25,6 +37,15 @@ describe("MyHealth SPA", () => {
     cleanup();
     vi.unstubAllGlobals();
 	vi.useRealTimers();
+  });
+
+  it("суммирует пересекающиеся продукты при разворачивании бандла", () => {
+    const merged = mergeBundleItems(
+      [{ food, weight: "40" }],
+      [{ food, weight: 200 }]
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].weight).toBe("240");
   });
 
   it("перенаправляет на список продуктов и показывает пользователя", async () => {
@@ -231,5 +252,67 @@ describe("MyHealth SPA", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(itemURL, { method: "DELETE" }));
     expect(await screen.findByText("Продуктов пока нет. Добавьте первый.")).toBeInTheDocument();
+  });
+
+  it("показывает список бандлов и подтверждает удаление", async () => {
+    let deleted = false;
+    const itemURL = "/api/bundle/" + bundleKey;
+    const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input === itemURL && init?.method === "DELETE") {
+        deleted = true;
+        return { ok: true };
+      }
+      if (input === "/api/bundle") return response({ data: deleted ? [] : [bundleSummary] });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/bundle"]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Завтрак" })).toBeInTheDocument();
+    expect(screen.getByText("1 продуктов · 200 г")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Удалить" }));
+    const dialog = screen.getByRole("dialog", { name: "Удалить бандл?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Удалить" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(itemURL, { method: "DELETE" }));
+    expect(await screen.findByText("Бандлов пока нет. Добавьте первый.")).toBeInTheDocument();
+  });
+
+  it("находит вложенный бандл и сохраняет его как плоский список еды", async () => {
+    let createdBody: Record<string, unknown> | undefined;
+    const itemURL = "/api/bundle/" + bundleKey;
+    const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input.startsWith("/api/food")) return response({ data: [food] });
+      if (input === itemURL) return response({ data: bundle });
+      if (input.startsWith("/api/bundle?")) return response({ data: [bundleSummary] });
+      if (input === "/api/bundle" && init?.method === "POST") {
+        createdBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+        return response({ data: bundle });
+      }
+      if (input === "/api/bundle") return response({ data: [bundleSummary] });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/bundle/new"]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Добавить бандл" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Название"), { target: { value: "Рабочий завтрак" } });
+    const picker = screen.getByRole("combobox", { name: "Поиск еды или бандла" });
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: "Зав" } });
+    const option = await screen.findByText("Завтрак");
+    fireEvent.mouseDown(option);
+    fireEvent.click(option);
+
+    await waitFor(() => expect(screen.getByLabelText("Вес продукта Творог")).toHaveValue("200"));
+    expect(screen.getByText("Бандл «Завтрак» развёрнут в продукты.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+
+    await waitFor(() => expect(createdBody).toEqual({
+      name: "Рабочий завтрак",
+      items: [{ foodKey: food.key, weight: 200 }]
+    }));
   });
 });

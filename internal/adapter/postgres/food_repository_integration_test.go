@@ -24,7 +24,7 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(context.Background(), "TRUNCATE food")
+		_, _ = db.ExecContext(context.Background(), "TRUNCATE bundle_item, bundle, food")
 		_ = db.Close()
 	})
 	ctx := context.Background()
@@ -37,7 +37,7 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("second migration run must be idempotent: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, "TRUNCATE food"); err != nil {
+	if _, err := db.ExecContext(ctx, "TRUNCATE bundle_item, bundle, food"); err != nil {
 		t.Fatal(err)
 	}
 	repository := NewFoodRepository(db)

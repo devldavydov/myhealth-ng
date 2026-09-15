@@ -6,9 +6,12 @@ import { FoodFormPage } from "./pages/FoodFormPage";
 import { FoodPage } from "./pages/FoodPage";
 
 const WeightPage = lazy(() => import("./pages/WeightPage").then((module) => ({ default: module.WeightPage })));
+const BundlePage = lazy(() => import("./pages/BundlePage").then((module) => ({ default: module.BundlePage })));
+const BundleFormPage = lazy(() => import("./pages/BundleFormPage").then((module) => ({ default: module.BundleFormPage })));
 
 const sections = [
   { path: "/food", label: "Еда" },
+  { path: "/bundle", label: "Бандлы" },
   { path: "/weight", label: "Вес" }
 ];
 
@@ -40,6 +43,21 @@ export function App() {
           <Route path="/food" element={<FoodPage />} />
           <Route path="/food/new" element={<FoodFormPage />} />
           <Route path="/food/:key/edit" element={<FoodFormPage />} />
+          <Route path="/bundle" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка раздела…</p></div>}>
+              <BundlePage />
+            </Suspense>
+          )} />
+          <Route path="/bundle/new" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка формы…</p></div>}>
+              <BundleFormPage />
+            </Suspense>
+          )} />
+          <Route path="/bundle/:key/edit" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка формы…</p></div>}>
+              <BundleFormPage />
+            </Suspense>
+          )} />
           <Route path="/weight" element={(
             <Suspense fallback={<div className="page"><p className="muted">Загрузка раздела…</p></div>}>
               <WeightPage />

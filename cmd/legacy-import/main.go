@@ -70,10 +70,16 @@ func run(args []string) error {
 		return err
 	}
 	total := 0
+	imported := 0
 	for _, dataset := range report.Datasets {
+		if dataset.Skipped {
+			log.Printf("Legacy dataset skipped (file is absent): %s", dataset.Name)
+			continue
+		}
 		log.Printf("Legacy dataset imported: %s=%d", dataset.Name, dataset.Count)
+		imported++
 		total += dataset.Count
 	}
-	log.Printf("Legacy import complete: datasets=%d, rows=%d", len(report.Datasets), total)
+	log.Printf("Legacy import complete: datasets=%d, rows=%d", imported, total)
 	return nil
 }
