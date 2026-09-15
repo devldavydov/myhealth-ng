@@ -1,47 +1,45 @@
 package service
 
 import (
+	"flag"
 	"fmt"
-	"os"
-	"strconv"
+	"io"
 )
 
 const (
-	defaultHost         = "127.0.0.1"
-	defaultPort         = 3000
-	defaultClientOrigin = "http://localhost:5173"
+	defaultHost = "127.0.0.1"
+	defaultPort = 3000
 )
 
 type Config struct {
 	Host                     string
 	Port                     int
-	ClientOrigin             string
+	DatabaseURL              string
 	RequireClientCertificate bool
 }
 
-func ConfigFromEnvironment() (Config, error) {
-	portValue := os.Getenv("PORT")
-	if portValue == "" {
-		portValue = strconv.Itoa(defaultPort)
+func ConfigFromArgs(args []string) (Config, error) {
+	config := Config{}
+	flags := flag.NewFlagSet("myhealth-server", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&config.Host, "host", defaultHost, "адрес HTTP-сервера")
+	flags.IntVar(&config.Port, "port", defaultPort, "порт HTTP-сервера")
+	flags.StringVar(&config.DatabaseURL, "database-url", "", "строка подключения PostgreSQL")
+	flags.BoolVar(&config.RequireClientCertificate, "require-client-cert", false, "требовать проверенный клиентский сертификат")
+	if err := flags.Parse(args); err != nil {
+		return Config{}, fmt.Errorf("параметры запуска: %w", err)
 	}
-	port, err := strconv.Atoi(portValue)
-	if err != nil || port < 1 || port > 65535 {
-		return Config{}, fmt.Errorf("некорректный PORT: %q", portValue)
+	if flags.NArg() > 0 {
+		return Config{}, fmt.Errorf("неожиданные аргументы: %v", flags.Args())
 	}
-
-	host := os.Getenv("HOST")
-	if host == "" {
-		host = defaultHost
+	if config.Host == "" {
+		return Config{}, fmt.Errorf("--host не может быть пустым")
 	}
-	clientOrigin := os.Getenv("CLIENT_ORIGIN")
-	if clientOrigin == "" {
-		clientOrigin = defaultClientOrigin
+	if config.Port < 1 || config.Port > 65535 {
+		return Config{}, fmt.Errorf("некорректный --port: %d", config.Port)
 	}
-
-	return Config{
-		Host:                     host,
-		Port:                     port,
-		ClientOrigin:             clientOrigin,
-		RequireClientCertificate: os.Getenv("REQUIRE_CLIENT_CERT") == "true",
-	}, nil
+	if config.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("обязателен --database-url")
+	}
+	return config, nil
 }

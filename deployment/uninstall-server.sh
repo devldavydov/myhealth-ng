@@ -36,6 +36,7 @@ fi
 
 systemctl disable --now myhealth.service 2>/dev/null || true
 rm -f /etc/systemd/system/myhealth.service
+rm -rf -- /etc/systemd/system/myhealth.service.d
 systemctl daemon-reload
 
 rm -f /etc/nginx/sites-enabled/myhealth /etc/nginx/sites-available/myhealth

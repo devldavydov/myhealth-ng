@@ -1,9 +1,16 @@
 import "./user-badge.css";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { getCurrentUser } from "./api";
-import { DashboardPage } from "./pages/DashboardPage";
-import { MeasurementsPage } from "./pages/MeasurementsPage";
+import { FoodFormPage } from "./pages/FoodFormPage";
+import { FoodPage } from "./pages/FoodPage";
+
+const WeightPage = lazy(() => import("./pages/WeightPage").then((module) => ({ default: module.WeightPage })));
+
+const sections = [
+  { path: "/food", label: "Еда" },
+  { path: "/weight", label: "Вес" }
+];
 
 export function App() {
   const [userName, setUserName] = useState("Пользователь");
@@ -19,8 +26,9 @@ export function App() {
           <span className="brand-mark">M+</span><span>MyHealth</span>
         </NavLink>
         <nav aria-label="Основная навигация">
-          <NavLink to="/">Обзор</NavLink>
-          <NavLink to="/measurements">Измерения</NavLink>
+          {sections.map((section) => (
+            <NavLink key={section.path} to={section.path}>{section.label}</NavLink>
+          ))}
         </nav>
         <div className="user-badge" title="Имя из клиентского сертификата">
           <span aria-hidden="true">{userName.slice(0, 1).toUpperCase()}</span>
@@ -29,9 +37,15 @@ export function App() {
       </header>
       <main>
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/measurements" element={<MeasurementsPage />} />
-          <Route path="*" element={<Navigate replace to="/" />} />
+          <Route path="/food" element={<FoodPage />} />
+          <Route path="/food/new" element={<FoodFormPage />} />
+          <Route path="/food/:key/edit" element={<FoodFormPage />} />
+          <Route path="/weight" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка раздела…</p></div>}>
+              <WeightPage />
+            </Suspense>
+          )} />
+          <Route path="*" element={<Navigate replace to="/food" />} />
         </Routes>
       </main>
     </div>

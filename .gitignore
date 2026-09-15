@@ -3,7 +3,11 @@ client/dist/
 artifacts/
 dist/
 client/coverage/
+client/*.tsbuildinfo
+client/vite.config.js
+client/vite.config.d.ts
 .env
 .DS_Store
 *.log
 TASK.md
+legacy_data/*.csv

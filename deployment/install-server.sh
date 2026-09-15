@@ -8,14 +8,35 @@ source "$SCRIPT_DIR/lib.sh"
 require_root
 
 BUNDLE_INPUT=${1:-}
-PUBLIC_HOST=${2:-}
-HTTPS_PORT=${3:-443}
-if [[ -z $BUNDLE_INPUT || -z $PUBLIC_HOST ]]; then
-  echo "Использование: sudo $0 <архив-релиза-или-каталог> <домен-или-ip> [https-порт]" >&2
+[[ -n $BUNDLE_INPUT ]] && shift
+PUBLIC_HOST=
+HTTPS_PORT=443
+SERVER_HOST=127.0.0.1
+SERVER_PORT=3000
+DATABASE_URL=
+while (( $# > 0 )); do
+  case "$1" in
+    --public-host) PUBLIC_HOST=${2:-}; shift 2 ;;
+    --https-port) HTTPS_PORT=${2:-}; shift 2 ;;
+    --server-host) SERVER_HOST=${2:-}; shift 2 ;;
+    --server-port) SERVER_PORT=${2:-}; shift 2 ;;
+    --database-url) DATABASE_URL=${2:-}; shift 2 ;;
+    --help|-h)
+      echo "Использование: sudo $0 <архив-релиза-или-каталог> --public-host <домен-или-ip> --database-url <url> [--https-port 443] [--server-host 127.0.0.1] [--server-port 3000]"
+      exit 0
+      ;;
+    *) echo "Неизвестный аргумент: $1" >&2; exit 1 ;;
+  esac
+done
+if [[ -z $BUNDLE_INPUT || -z $PUBLIC_HOST || -z $DATABASE_URL ]]; then
+  echo "Обязательны архив, --public-host и --database-url" >&2
   exit 1
 fi
-if [[ ! $PUBLIC_HOST =~ ^[A-Za-z0-9.:-]+$ || ! $HTTPS_PORT =~ ^[0-9]+$ ]]; then
-  echo "Некорректный домен/IP или порт" >&2
+if [[ ! $PUBLIC_HOST =~ ^[A-Za-z0-9.:-]+$ || ! $SERVER_HOST =~ ^[A-Za-z0-9.:-]+$ ||
+      ! $HTTPS_PORT =~ ^[0-9]+$ || ! $SERVER_PORT =~ ^[0-9]+$ ||
+      $HTTPS_PORT -lt 1 || $HTTPS_PORT -gt 65535 || $SERVER_PORT -lt 1 || $SERVER_PORT -gt 65535 ||
+      $DATABASE_URL == *$'\n'* || $DATABASE_URL == *$'\r'* ]]; then
+  echo "Некорректный домен/IP, адрес или порт" >&2
   exit 1
 fi
 SERVER_EXT=
@@ -60,14 +81,8 @@ verify_bundles "$BUNDLE_DIR"
 VERSION=$(read_release_version "$BUNDLE_DIR")
 install_release "$BUNDLE_DIR" "$VERSION"
 
-cat > /etc/myhealth/myhealth.env <<'ENV'
-PORT=3000
-HOST=127.0.0.1
-REQUIRE_CLIENT_CERT=true
-ENV
-chmod 0640 /etc/myhealth/myhealth.env
-
 install -m 0644 "$SCRIPT_DIR/templates/myhealth.service" /etc/systemd/system/myhealth.service
+write_service_override "$DATABASE_URL" "$SERVER_HOST" "$SERVER_PORT"
 
 sed \
   -e "s|__PUBLIC_HOST__|$PUBLIC_HOST|g" \

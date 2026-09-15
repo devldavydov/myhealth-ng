@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:18.6-alpine3.23
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_DB: myhealth
+      POSTGRES_USER: myhealth
+      POSTGRES_PASSWORD: myhealth
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U myhealth -d myhealth"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  postgres-data:

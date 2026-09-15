@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devldavydov/myhealth-ng/internal/domain"
+	"github.com/devldavydov/myhealth-ng/internal/entity"
 )
 
 const developmentGUID = "00000000-0000-4000-8000-000000000000"
@@ -27,12 +27,12 @@ func (err *ClientCertificateError) Error() string {
 	return err.Message
 }
 
-func ReadClientIdentity(request *http.Request, certificateRequired bool) (domain.UserIdentity, error) {
+func ReadClientIdentity(request *http.Request, certificateRequired bool) (entity.UserIdentity, error) {
 	if request.Header.Get("X-Client-Verify") != "SUCCESS" || request.Header.Get("X-Client-Cert") == "" {
 		if certificateRequired {
-			return domain.UserIdentity{}, &ClientCertificateError{Message: "Требуется проверенный клиентский сертификат"}
+			return entity.UserIdentity{}, &ClientCertificateError{Message: "Требуется проверенный клиентский сертификат"}
 		}
-		return domain.UserIdentity{
+		return entity.UserIdentity{
 			GUID:                   developmentGUID,
 			Name:                   "Локальный пользователь",
 			CertificateFingerprint: "development",
@@ -43,16 +43,16 @@ func ReadClientIdentity(request *http.Request, certificateRequired bool) (domain
 	escapedCertificate := request.Header.Get("X-Client-Cert")
 	certificatePEM, err := url.PathUnescape(escapedCertificate)
 	if err != nil {
-		return domain.UserIdentity{}, invalidCertificate(err)
+		return entity.UserIdentity{}, invalidCertificate(err)
 	}
 
 	block, _ := pem.Decode([]byte(certificatePEM))
 	if block == nil || block.Type != "CERTIFICATE" {
-		return domain.UserIdentity{}, invalidCertificate(fmt.Errorf("не найден PEM-блок сертификата"))
+		return entity.UserIdentity{}, invalidCertificate(fmt.Errorf("не найден PEM-блок сертификата"))
 	}
 	certificate, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return domain.UserIdentity{}, invalidCertificate(err)
+		return entity.UserIdentity{}, invalidCertificate(err)
 	}
 
 	guid := ""
@@ -65,11 +65,11 @@ func ReadClientIdentity(request *http.Request, certificateRequired bool) (domain
 	}
 	name := certificate.Subject.CommonName
 	if guid == "" || name == "" {
-		return domain.UserIdentity{}, invalidCertificate(fmt.Errorf("в сертификате отсутствуют CN или MyHealth GUID"))
+		return entity.UserIdentity{}, invalidCertificate(fmt.Errorf("в сертификате отсутствуют CN или MyHealth GUID"))
 	}
 
 	fingerprint := sha256.Sum256(certificate.Raw)
-	return domain.UserIdentity{
+	return entity.UserIdentity{
 		GUID:                   guid,
 		Name:                   name,
 		CertificateFingerprint: formatFingerprint(fingerprint[:]),

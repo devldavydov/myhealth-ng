@@ -4,8 +4,37 @@ MYHEALTH_ROOT=/opt/myhealth
 MYHEALTH_RELEASES=$MYHEALTH_ROOT/releases
 MYHEALTH_CURRENT=$MYHEALTH_ROOT/current
 MYHEALTH_USER=myhealth
+MYHEALTH_SERVICE_OVERRIDE=/etc/systemd/system/myhealth.service.d/10-config.conf
 BUNDLE_TEMP_DIR=
 BUNDLE_DIR=
+
+systemd_quote() {
+  local value=$1
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//\$/\$\$}
+  value=${value//%/%%}
+  printf '"%s"' "$value"
+}
+
+write_service_override() {
+  local database_url=$1
+  local server_host=$2
+  local server_port=$3
+  local database_argument host_argument port_argument
+
+  database_argument=$(systemd_quote "$database_url")
+  host_argument=$(systemd_quote "$server_host")
+  port_argument=$(systemd_quote "$server_port")
+  install -d -m 0755 "$(dirname -- "$MYHEALTH_SERVICE_OVERRIDE")"
+  {
+    echo '[Service]'
+    echo 'ExecStart='
+    printf 'ExecStart=/opt/myhealth/current/server/myhealth-server --host=%s --port=%s --database-url=%s --require-client-cert=true\n' \
+      "$host_argument" "$port_argument" "$database_argument"
+  } > "$MYHEALTH_SERVICE_OVERRIDE"
+  chmod 0600 "$MYHEALTH_SERVICE_OVERRIDE"
+}
 
 require_root() {
   if (( EUID != 0 )); then
