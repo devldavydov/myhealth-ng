@@ -25,7 +25,7 @@ func TestBundleRepositoryWithPostgres(t *testing.T) {
 	}
 	ctx := context.Background()
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(context.Background(), "TRUNCATE bundle_item, bundle, food")
+		_, _ = db.ExecContext(context.Background(), "TRUNCATE journal, bundle_item, bundle, food")
 		_ = db.Close()
 	})
 	if err := db.PingContext(ctx); err != nil {
@@ -34,7 +34,7 @@ func TestBundleRepositoryWithPostgres(t *testing.T) {
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, "TRUNCATE bundle_item, bundle, food"); err != nil {
+	if _, err := db.ExecContext(ctx, "TRUNCATE journal, bundle_item, bundle, food"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,9 +59,13 @@ func TestBundleRepositoryWithPostgres(t *testing.T) {
 	if len(created.Items) != 2 || math.Abs(created.Totals.Weight-60) > .0001 || math.Abs(created.Totals.Cal-160) > .0001 {
 		t.Fatalf("unexpected created bundle: %+v", created)
 	}
-	listed, err := repository.List(ctx, "_1")
-	if err != nil || len(listed) != 1 || listed[0].ItemCount != 2 || listed[0].Key != bundleKey {
+	listed, err := repository.List(ctx, entity.PageRequest{Query: "_1", Page: 1, PageSize: 10})
+	if err != nil || len(listed.Items) != 1 || listed.Items[0].ItemCount != 2 || listed.Items[0].Key != bundleKey || listed.Total != 1 {
 		t.Fatalf("listed=%+v err=%v", listed, err)
+	}
+	outOfRange, err := repository.List(ctx, entity.PageRequest{Page: 2, PageSize: 10})
+	if err != nil || len(outOfRange.Items) != 0 || outOfRange.Page != 2 || outOfRange.Total != 1 || outOfRange.TotalPages != 1 {
+		t.Fatalf("out-of-range page = %+v, err=%v", outOfRange, err)
 	}
 	updated, err := repository.Update(ctx, bundleKey, entity.BundleData{Name: "Бутерброд", Items: []entity.BundleItemData{{FoodKey: bread.Key, Weight: 80}}})
 	if err != nil || updated.Name != "Бутерброд" || len(updated.Items) != 1 || updated.Items[0].Weight != 80 {

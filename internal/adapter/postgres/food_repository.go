@@ -13,17 +13,27 @@ import (
 	"github.com/devldavydov/myhealth-ng/internal/port"
 )
 
+const countFoodQuery = `SELECT COUNT(*) FROM food`
+
+const countSearchFoodQuery = `
+SELECT COUNT(*)
+FROM food
+WHERE name ILIKE $1 ESCAPE E'\\'
+   OR brand ILIKE $1 ESCAPE E'\\'`
+
 const listFoodQuery = `
 SELECT key, name, brand, cal100, prot100, fat100, carb100, comment
 FROM food
-ORDER BY lower(name), lower(brand), key`
+ORDER BY lower(name), lower(brand), key
+LIMIT $1 OFFSET $2`
 
 const searchFoodQuery = `
 SELECT key, name, brand, cal100, prot100, fat100, carb100, comment
 FROM food
 WHERE name ILIKE $1 ESCAPE E'\\'
    OR brand ILIKE $1 ESCAPE E'\\'
-ORDER BY lower(name), lower(brand), key`
+ORDER BY lower(name), lower(brand), key
+LIMIT $2 OFFSET $3`
 
 type FoodRepository struct {
 	db *sql.DB
@@ -33,18 +43,28 @@ func NewFoodRepository(db *sql.DB) *FoodRepository {
 	return &FoodRepository{db: db}
 }
 
-func (repository *FoodRepository) List(ctx context.Context, query string) ([]entity.Food, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	if query == "" {
-		rows, err = repository.db.QueryContext(ctx, listFoodQuery)
+func (repository *FoodRepository) List(ctx context.Context, request entity.PageRequest) (entity.Page[entity.Food], error) {
+	var total int
+	var err error
+	pattern := "%" + escapeLike(request.Query) + "%"
+	if request.Query == "" {
+		err = repository.db.QueryRowContext(ctx, countFoodQuery).Scan(&total)
 	} else {
-		rows, err = repository.db.QueryContext(ctx, searchFoodQuery, "%"+escapeLike(query)+"%")
+		err = repository.db.QueryRowContext(ctx, countSearchFoodQuery, pattern).Scan(&total)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("list food: %w", err)
+		return entity.Page[entity.Food]{}, fmt.Errorf("count food: %w", err)
+	}
+
+	offset := int64(request.Page-1) * int64(request.PageSize)
+	var rows *sql.Rows
+	if request.Query == "" {
+		rows, err = repository.db.QueryContext(ctx, listFoodQuery, request.PageSize, offset)
+	} else {
+		rows, err = repository.db.QueryContext(ctx, searchFoodQuery, pattern, request.PageSize, offset)
+	}
+	if err != nil {
+		return entity.Page[entity.Food]{}, fmt.Errorf("list food: %w", err)
 	}
 	defer rows.Close()
 
@@ -52,14 +72,17 @@ func (repository *FoodRepository) List(ctx context.Context, query string) ([]ent
 	for rows.Next() {
 		item, err := scanFood(rows)
 		if err != nil {
-			return nil, fmt.Errorf("scan food list: %w", err)
+			return entity.Page[entity.Food]{}, fmt.Errorf("scan food list: %w", err)
 		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate food list: %w", err)
+		return entity.Page[entity.Food]{}, fmt.Errorf("iterate food list: %w", err)
 	}
-	return items, nil
+	return entity.Page[entity.Food]{
+		Items: items, Page: request.Page, PageSize: request.PageSize, Total: total,
+		TotalPages: calculateTotalPages(total, request.PageSize),
+	}, nil
 }
 
 func (repository *FoodRepository) Get(ctx context.Context, key string) (entity.Food, error) {

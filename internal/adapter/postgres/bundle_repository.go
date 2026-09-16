@@ -12,6 +12,13 @@ import (
 	"github.com/devldavydov/myhealth-ng/internal/port"
 )
 
+const countBundlesQuery = `SELECT COUNT(*) FROM bundle`
+
+const countSearchBundlesQuery = `
+SELECT COUNT(*)
+FROM bundle
+WHERE name ILIKE $1 ESCAPE E'\\'`
+
 const listBundlesQuery = `
 SELECT b.key, b.name, COUNT(*)::integer,
        COALESCE(SUM(bi.weight), 0)::double precision,
@@ -23,7 +30,8 @@ FROM bundle b
 JOIN bundle_item bi ON bi.bundle_key = b.key
 JOIN food f ON f.key = bi.food_key
 GROUP BY b.key, b.name
-ORDER BY lower(b.name), b.key`
+ORDER BY lower(b.name), b.key
+LIMIT $1 OFFSET $2`
 
 const searchBundlesQuery = `
 SELECT b.key, b.name, COUNT(*)::integer,
@@ -37,7 +45,8 @@ JOIN bundle_item bi ON bi.bundle_key = b.key
 JOIN food f ON f.key = bi.food_key
 WHERE b.name ILIKE $1 ESCAPE E'\\'
 GROUP BY b.key, b.name
-ORDER BY lower(b.name), b.key`
+ORDER BY lower(b.name), b.key
+LIMIT $2 OFFSET $3`
 
 type BundleRepository struct {
 	db *sql.DB
@@ -47,34 +56,46 @@ func NewBundleRepository(db *sql.DB) *BundleRepository {
 	return &BundleRepository{db: db}
 }
 
-func (repository *BundleRepository) List(ctx context.Context, query string) ([]entity.BundleSummary, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	if query == "" {
-		rows, err = repository.db.QueryContext(ctx, listBundlesQuery)
+func (repository *BundleRepository) List(ctx context.Context, request entity.PageRequest) (entity.Page[entity.BundleSummary], error) {
+	var total int
+	var err error
+	pattern := "%" + escapeLike(request.Query) + "%"
+	if request.Query == "" {
+		err = repository.db.QueryRowContext(ctx, countBundlesQuery).Scan(&total)
 	} else {
-		rows, err = repository.db.QueryContext(ctx, searchBundlesQuery, "%"+escapeLike(query)+"%")
+		err = repository.db.QueryRowContext(ctx, countSearchBundlesQuery, pattern).Scan(&total)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("list bundles: %w", err)
+		return entity.Page[entity.BundleSummary]{}, fmt.Errorf("count bundles: %w", err)
+	}
+
+	offset := int64(request.Page-1) * int64(request.PageSize)
+	var rows *sql.Rows
+	if request.Query == "" {
+		rows, err = repository.db.QueryContext(ctx, listBundlesQuery, request.PageSize, offset)
+	} else {
+		rows, err = repository.db.QueryContext(ctx, searchBundlesQuery, pattern, request.PageSize, offset)
+	}
+	if err != nil {
+		return entity.Page[entity.BundleSummary]{}, fmt.Errorf("list bundles: %w", err)
 	}
 	defer rows.Close()
 
 	items := make([]entity.BundleSummary, 0)
 	for rows.Next() {
 		var item entity.BundleSummary
-		err := rows.Scan(&item.Key, &item.Name, &item.ItemCount, &item.Totals.Weight, &item.Totals.Cal, &item.Totals.Protein, &item.Totals.Fat, &item.Totals.Carb)
-		if err != nil {
-			return nil, fmt.Errorf("scan bundle list: %w", err)
+		if err := rows.Scan(&item.Key, &item.Name, &item.ItemCount, &item.Totals.Weight, &item.Totals.Cal, &item.Totals.Protein, &item.Totals.Fat, &item.Totals.Carb); err != nil {
+			return entity.Page[entity.BundleSummary]{}, fmt.Errorf("scan bundle list: %w", err)
 		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate bundle list: %w", err)
+		return entity.Page[entity.BundleSummary]{}, fmt.Errorf("iterate bundle list: %w", err)
 	}
-	return items, nil
+	return entity.Page[entity.BundleSummary]{
+		Items: items, Page: request.Page, PageSize: request.PageSize, Total: total,
+		TotalPages: calculateTotalPages(total, request.PageSize),
+	}, nil
 }
 
 func (repository *BundleRepository) Get(ctx context.Context, key string) (entity.Bundle, error) {

@@ -14,7 +14,7 @@ var (
 )
 
 type BundleRepository interface {
-	List(context.Context, string) ([]entity.BundleSummary, error)
+	List(context.Context, entity.PageRequest) (entity.Page[entity.BundleSummary], error)
 	Get(context.Context, string) (entity.Bundle, error)
 	Create(context.Context, entity.Bundle) (entity.Bundle, error)
 	Update(context.Context, string, entity.BundleData) (entity.Bundle, error)
@@ -22,7 +22,7 @@ type BundleRepository interface {
 }
 
 type BundleUseCases interface {
-	List(context.Context, string) ([]entity.BundleSummary, error)
+	List(context.Context, entity.PageRequest) (entity.Page[entity.BundleSummary], error)
 	Get(context.Context, string) (entity.Bundle, error)
 	Create(context.Context, entity.BundleData) (entity.Bundle, error)
 	Update(context.Context, string, entity.BundleData) (entity.Bundle, error)

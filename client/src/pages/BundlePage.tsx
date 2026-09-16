@@ -1,38 +1,63 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { deleteBundle, getBundles, type BundleSummary } from "../api";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { deleteBundle, getBundles, type BundleSummary, type PageSize, type Pagination } from "../api";
+import { catalogSearchParams, readCatalogParams, type CatalogParams } from "../catalogParams";
+import { CatalogPagination } from "../components/CatalogPagination";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 
 const numberFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 2 });
+const initialPagination: Pagination = { page: 1, pageSize: 20, total: 0, totalPages: 0 };
 
 export function BundlePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const catalog = useMemo(() => readCatalogParams(searchParams), [searchParams]);
   const [items, setItems] = useState<BundleSummary[]>([]);
-  const [query, setQuery] = useState("");
-  const [activeQuery, setActiveQuery] = useState("");
+  const [query, setQuery] = useState(catalog.query);
+  const [pagination, setPagination] = useState<Pagination>(initialPagination);
   const [loading, setLoading] = useState(true);
   const [deletingKey, setDeletingKey] = useState("");
   const [bundleToDelete, setBundleToDelete] = useState<BundleSummary | null>(null);
   const [error, setError] = useState("");
+  const requestSequence = useRef(0);
 
-  const load = useCallback(async (search: string) => {
+  const navigate = useCallback((params: CatalogParams, replace = false) => {
+    setSearchParams(catalogSearchParams(params), { replace });
+  }, [setSearchParams]);
+
+  const load = useCallback(async (params: CatalogParams) => {
+    const request = ++requestSequence.current;
     setLoading(true);
     setError("");
     try {
-      setItems(await getBundles(search));
+      const result = await getBundles(params);
+      if (request !== requestSequence.current) return;
+      setItems(result.items);
+      setPagination(result.pagination);
+
+      const lastPage = Math.max(1, result.pagination.totalPages);
+      if (params.page > lastPage) navigate({ ...params, page: lastPage }, true);
     } catch (requestError) {
+      if (request !== requestSequence.current) return;
       setError(requestError instanceof Error ? requestError.message : "Не удалось загрузить бандлы");
     } finally {
-      setLoading(false);
+      if (request === requestSequence.current) setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
-  useEffect(() => { void load(""); }, [load]);
+  useEffect(() => {
+    const canonical = catalogSearchParams(catalog);
+    if (canonical.toString() !== searchParams.toString()) setSearchParams(canonical, { replace: true });
+  }, [catalog, searchParams, setSearchParams]);
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => { setQuery(catalog.query); }, [catalog.query]);
+  useEffect(() => {
+    void load(catalog);
+    return () => { requestSequence.current += 1; };
+  }, [catalog, load]);
+
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalized = query.trim();
-    setActiveQuery(normalized);
-    await load(normalized);
+    navigate({ ...catalog, query: query.trim(), page: 1 });
   }
 
   async function handleDelete() {
@@ -42,13 +67,17 @@ export function BundlePage() {
     setError("");
     try {
       await deleteBundle(bundle.key);
-      await load(activeQuery);
+      await load(catalog);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не удалось удалить бандл");
     } finally {
       setBundleToDelete(null);
       setDeletingKey("");
     }
+  }
+
+  function handlePageSizeChange(pageSize: PageSize) {
+    navigate({ ...catalog, page: 1, pageSize });
   }
 
   return (
@@ -65,13 +94,13 @@ export function BundlePage() {
       <section aria-labelledby="bundle-list-heading">
         <div className="section-heading">
           <h2 id="bundle-list-heading">Список</h2>
-          <span className="food-count" aria-label={`Найдено бандлов: ${items.length}`}>{items.length}</span>
+          <span className="food-count" aria-label={`Найдено бандлов: ${pagination.total}`}>{pagination.total}</span>
         </div>
         <form className="search-form" role="search" onSubmit={handleSearch}>
           <input aria-label="Поиск бандлов" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название" />
           <button className="button primary" type="submit">Найти</button>
-          {activeQuery && (
-            <button className="button secondary" type="button" onClick={() => { setQuery(""); setActiveQuery(""); void load(""); }}>
+          {catalog.query && (
+            <button className="button secondary" type="button" onClick={() => navigate({ ...catalog, query: "", page: 1 })}>
               Сбросить
             </button>
           )}
@@ -79,7 +108,7 @@ export function BundlePage() {
 
         {error && <div className="error" role="alert">{error}</div>}
         {loading ? <p className="muted">Загрузка…</p> : items.length === 0 ? (
-          <p className="empty">{activeQuery ? "По вашему запросу ничего не найдено." : "Бандлов пока нет. Добавьте первый."}</p>
+          <p className="empty">{catalog.query ? "По вашему запросу ничего не найдено." : "Бандлов пока нет. Добавьте первый."}</p>
         ) : (
           <div className="food-list">
             {items.map((bundle) => (
@@ -105,6 +134,15 @@ export function BundlePage() {
               </article>
             ))}
           </div>
+        )}
+
+        {!loading && !error && (
+          <CatalogPagination
+            noun="бандлов"
+            onPageChange={(page) => navigate({ ...catalog, page })}
+            onPageSizeChange={handlePageSizeChange}
+            pagination={pagination}
+          />
         )}
       </section>
 

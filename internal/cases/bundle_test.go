@@ -20,8 +20,8 @@ type bundleRepositoryStub struct {
 	err     error
 }
 
-func (stub *bundleRepositoryStub) List(context.Context, string) ([]entity.BundleSummary, error) {
-	return nil, stub.err
+func (stub *bundleRepositoryStub) List(_ context.Context, request entity.PageRequest) (entity.Page[entity.BundleSummary], error) {
+	return entity.Page[entity.BundleSummary]{Page: request.Page, PageSize: request.PageSize}, stub.err
 }
 func (stub *bundleRepositoryStub) Get(context.Context, string) (entity.Bundle, error) {
 	return entity.Bundle{}, stub.err

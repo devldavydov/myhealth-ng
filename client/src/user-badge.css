@@ -2,8 +2,19 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  min-height: 44px;
+  padding: 5px 7px 5px 5px;
   color: #536965;
   font-size: 13px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.user-badge:hover,
+.user-badge:focus-visible {
+  color: #126b64;
+  background: #edf5f2;
 }
 
 .user-badge span {
@@ -18,5 +29,6 @@
 }
 
 @media (max-width: 620px) {
+  .user-badge { padding-right: 5px; }
   .user-badge strong { display: none; }
 }

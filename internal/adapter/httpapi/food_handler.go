@@ -44,16 +44,21 @@ func newFoodHandler(food port.FoodUseCases) *foodHandler {
 }
 
 func (handler *foodHandler) list(ctx *gin.Context) {
-	items, err := handler.food.List(ctx.Request.Context(), ctx.Query("q"))
+	request, err := decodePageRequest(ctx)
 	if err != nil {
 		respondFoodError(ctx, err)
 		return
 	}
-	response := make([]foodResponse, 0, len(items))
-	for _, item := range items {
+	page, err := handler.food.List(ctx.Request.Context(), request)
+	if err != nil {
+		respondFoodError(ctx, err)
+		return
+	}
+	response := make([]foodResponse, 0, len(page.Items))
+	for _, item := range page.Items {
 		response = append(response, toFoodResponse(item))
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": response})
+	ctx.JSON(http.StatusOK, gin.H{"data": response, "pagination": toPaginationResponse(page)})
 }
 
 func (handler *foodHandler) get(ctx *gin.Context) {
@@ -173,7 +178,7 @@ func respondFoodError(ctx *gin.Context, err error) {
 	case errors.Is(err, port.ErrFoodConflict):
 		ctx.JSON(http.StatusConflict, gin.H{"error": "Продукт с таким ключом уже существует"})
 	case errors.Is(err, port.ErrFoodInUse):
-		ctx.JSON(http.StatusConflict, gin.H{"error": "Продукт используется в бандле. Сначала удалите его из всех бандлов"})
+		ctx.JSON(http.StatusConflict, gin.H{"error": "Продукт используется в бандле или журнале. Сначала удалите связанные записи"})
 	default:
 		_ = ctx.Error(err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Внутренняя ошибка сервера"})

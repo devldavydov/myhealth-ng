@@ -58,16 +58,21 @@ func newBundleHandler(bundles port.BundleUseCases) *bundleHandler {
 }
 
 func (handler *bundleHandler) list(ctx *gin.Context) {
-	items, err := handler.bundles.List(ctx.Request.Context(), ctx.Query("q"))
+	request, err := decodePageRequest(ctx)
 	if err != nil {
 		respondBundleError(ctx, err)
 		return
 	}
-	response := make([]bundleSummaryResponse, 0, len(items))
-	for _, item := range items {
+	page, err := handler.bundles.List(ctx.Request.Context(), request)
+	if err != nil {
+		respondBundleError(ctx, err)
+		return
+	}
+	response := make([]bundleSummaryResponse, 0, len(page.Items))
+	for _, item := range page.Items {
 		response = append(response, toBundleSummaryResponse(item))
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": response})
+	ctx.JSON(http.StatusOK, gin.H{"data": response, "pagination": toPaginationResponse(page)})
 }
 
 func (handler *bundleHandler) get(ctx *gin.Context) {

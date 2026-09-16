@@ -20,8 +20,12 @@ func NewFood(repository port.FoodRepository) *Food {
 	return &Food{repository: repository, generateKey: randomUUID}
 }
 
-func (food *Food) List(ctx context.Context, query string) ([]entity.Food, error) {
-	return food.repository.List(ctx, strings.TrimSpace(query))
+func (food *Food) List(ctx context.Context, request entity.PageRequest) (entity.Page[entity.Food], error) {
+	request, err := normalizePageRequest(request)
+	if err != nil {
+		return entity.Page[entity.Food]{}, err
+	}
+	return food.repository.List(ctx, request)
 }
 
 func (food *Food) Get(ctx context.Context, key string) (entity.Food, error) {

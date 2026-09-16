@@ -20,9 +20,53 @@ func TestDatasetLoadersUseCurrentExportNames(t *testing.T) {
 	if !ok || weight.path != filepath.Join("/legacy", "weight.csv") {
 		t.Fatalf("unexpected weight loader: %#v", loaders[1])
 	}
-	bundle, ok := loaders[2].(bundleLoader)
+	bundle, ok := loaders[3].(bundleLoader)
 	if !ok || bundle.path != filepath.Join("/legacy", "bundle.csv") {
-		t.Fatalf("unexpected bundle loader: %#v", loaders[2])
+		t.Fatalf("unexpected bundle loader: %#v", loaders[3])
+	}
+	journal, ok := loaders[4].(journalLoader)
+	if !ok || journal.path != filepath.Join("/legacy", "journal.csv") || journal.userID != "local-user" {
+		t.Fatalf("unexpected journal loader: %#v", loaders[4])
+	}
+}
+
+func TestReadJournal(t *testing.T) {
+	input := `"dt","meal","foodkey","foodweight"
+"2026-09-16","завтрак","сыр_гауда",48.0
+"2026-09-16","до обеда","чай",300.0
+`
+	rows, err := readJournal(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].dt.Format("2006-01-02") != "2026-09-16" || rows[0].meal != "завтрак" || rows[0].foodWeight != 48 {
+		t.Fatalf("unexpected rows: %+v", rows)
+	}
+}
+
+func TestReadJournalRejectsInvalidRows(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		row  string
+	}{
+		{"meal", `2026-09-16,ночь,сыр_гауда,48`},
+		{"date", `wrong,завтрак,сыр_гауда,48`},
+		{"weight", `2026-09-16,завтрак,сыр_гауда,0`},
+		{"food", `2026-09-16,завтрак,,48`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := "dt,meal,foodkey,foodweight\n" + test.row + "\n"
+			if _, err := readJournal(strings.NewReader(input)); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+	}
+	duplicate := `dt,meal,foodkey,foodweight
+2026-09-16,завтрак,сыр_гауда,48
+2026-09-16,завтрак,сыр_гауда,50
+`
+	if _, err := readJournal(strings.NewReader(duplicate)); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("unexpected duplicate error: %v", err)
 	}
 }
 

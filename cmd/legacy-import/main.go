@@ -31,7 +31,7 @@ func run(args []string) error {
 	flags.SetOutput(os.Stderr)
 	databaseURL := flags.String("database-url", "", "PostgreSQL connection string")
 	dataDirectory := flags.String("data-dir", "legacy_data", "legacy CSV directory")
-	userID := flags.String("user-id", "", "user ID assigned to legacy weight entries")
+	userID := flags.String("user-id", "", "user ID assigned to user-scoped legacy entries")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

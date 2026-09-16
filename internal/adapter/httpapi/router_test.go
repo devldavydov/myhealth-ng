@@ -33,7 +33,7 @@ var sampleBundle = entity.Bundle{
 
 type foodUseCasesStub struct {
 	items       []entity.Food
-	query       string
+	request     entity.PageRequest
 	createdData entity.FoodData
 	updatedKey  string
 	updatedData entity.FoodData
@@ -51,7 +51,7 @@ type weightUseCasesStub struct {
 }
 
 type bundleUseCasesStub struct {
-	query       string
+	request     entity.PageRequest
 	items       []entity.BundleSummary
 	createdData entity.BundleData
 	updatedKey  string
@@ -60,9 +60,62 @@ type bundleUseCasesStub struct {
 	err         error
 }
 
-func (stub *bundleUseCasesStub) List(_ context.Context, query string) ([]entity.BundleSummary, error) {
-	stub.query = query
-	return stub.items, stub.err
+type settingsUseCasesStub struct {
+	userID string
+	item   *entity.UserSettings
+	saved  entity.UserSettings
+	err    error
+}
+
+type journalUseCasesStub struct {
+	userID  string
+	dt      time.Time
+	meal    entity.MealType
+	items   []entity.JournalItemData
+	foodKey string
+	day     entity.JournalDay
+	err     error
+}
+
+func (stub *journalUseCasesStub) Get(_ context.Context, userID string, dt time.Time) (entity.JournalDay, error) {
+	stub.userID, stub.dt = userID, dt
+	return stub.day, stub.err
+}
+
+func (stub *journalUseCasesStub) Save(_ context.Context, userID string, dt time.Time, meal entity.MealType, items []entity.JournalItemData) (entity.JournalDay, error) {
+	stub.userID, stub.dt, stub.meal, stub.items = userID, dt, meal, items
+	return stub.day, stub.err
+}
+
+func (stub *journalUseCasesStub) DeleteItem(_ context.Context, userID string, dt time.Time, meal entity.MealType, foodKey string) (entity.JournalDay, error) {
+	stub.userID, stub.dt, stub.meal, stub.foodKey = userID, dt, meal, foodKey
+	return stub.day, stub.err
+}
+
+func (stub *journalUseCasesStub) ClearMeal(_ context.Context, userID string, dt time.Time, meal entity.MealType) (entity.JournalDay, error) {
+	stub.userID, stub.dt, stub.meal = userID, dt, meal
+	return stub.day, stub.err
+}
+
+func (stub *settingsUseCasesStub) Get(_ context.Context, userID string) (*entity.UserSettings, error) {
+	stub.userID = userID
+	return stub.item, stub.err
+}
+
+func (stub *settingsUseCasesStub) Save(_ context.Context, userID string, data entity.UserSettings) (entity.UserSettings, error) {
+	stub.userID, stub.saved = userID, data
+	return data, stub.err
+}
+
+func (stub *bundleUseCasesStub) List(_ context.Context, request entity.PageRequest) (entity.Page[entity.BundleSummary], error) {
+	if request.Page == 0 {
+		request.Page = entity.DefaultPage
+	}
+	if request.PageSize == 0 {
+		request.PageSize = entity.DefaultPageSize
+	}
+	stub.request = request
+	return entity.Page[entity.BundleSummary]{Items: stub.items, Page: request.Page, PageSize: request.PageSize, Total: len(stub.items), TotalPages: 1}, stub.err
 }
 func (stub *bundleUseCasesStub) Get(_ context.Context, _ string) (entity.Bundle, error) {
 	return sampleBundle, stub.err
@@ -93,9 +146,15 @@ func (stub *weightUseCasesStub) Delete(_ context.Context, userID string, data en
 	return stub.err
 }
 
-func (stub *foodUseCasesStub) List(_ context.Context, query string) ([]entity.Food, error) {
-	stub.query = query
-	return stub.items, stub.err
+func (stub *foodUseCasesStub) List(_ context.Context, request entity.PageRequest) (entity.Page[entity.Food], error) {
+	if request.Page == 0 {
+		request.Page = entity.DefaultPage
+	}
+	if request.PageSize == 0 {
+		request.PageSize = entity.DefaultPageSize
+	}
+	stub.request = request
+	return entity.Page[entity.Food]{Items: stub.items, Page: request.Page, PageSize: request.PageSize, Total: len(stub.items), TotalPages: 1}, stub.err
 }
 func (stub *foodUseCasesStub) Get(_ context.Context, _ string) (entity.Food, error) {
 	return sampleFood, stub.err
@@ -117,14 +176,20 @@ func TestFoodRoutes(t *testing.T) {
 	stub := &foodUseCasesStub{items: []entity.Food{sampleFood}}
 	router := newRouter(stub)
 
-	list := request(router, http.MethodGet, "/api/food?q=%D1%82%D0%B2%D0%BE%D1%80%D0%BE%D0%B3", "")
-	if list.Code != http.StatusOK || stub.query != "творог" {
-		t.Fatalf("list status=%d query=%q body=%s", list.Code, stub.query, list.Body)
+	list := request(router, http.MethodGet, "/api/food?q=%D1%82%D0%B2%D0%BE%D1%80%D0%BE%D0%B3&page=2&pageSize=50", "")
+	if list.Code != http.StatusOK || stub.request.Query != "творог" || stub.request.Page != 2 || stub.request.PageSize != 50 {
+		t.Fatalf("list status=%d request=%+v body=%s", list.Code, stub.request, list.Body)
 	}
 	var listed struct {
-		Data []map[string]any `json:"data"`
+		Data       []map[string]any `json:"data"`
+		Pagination struct {
+			Page       int `json:"page"`
+			PageSize   int `json:"pageSize"`
+			Total      int `json:"total"`
+			TotalPages int `json:"totalPages"`
+		} `json:"pagination"`
 	}
-	if err := json.Unmarshal(list.Body.Bytes(), &listed); err != nil || len(listed.Data) != 1 || listed.Data[0]["key"] != foodKey {
+	if err := json.Unmarshal(list.Body.Bytes(), &listed); err != nil || len(listed.Data) != 1 || listed.Data[0]["key"] != foodKey || listed.Pagination.Page != 2 || listed.Pagination.PageSize != 50 || listed.Pagination.Total != 1 || listed.Pagination.TotalPages != 1 {
 		t.Fatalf("unexpected list: %s, err=%v", list.Body, err)
 	}
 
@@ -144,6 +209,13 @@ func TestFoodRoutes(t *testing.T) {
 }
 
 func TestFoodValidationAndErrors(t *testing.T) {
+	for _, path := range []string{"/api/food?page=wrong", "/api/food?pageSize=10.5"} {
+		response := request(newRouter(&foodUseCasesStub{}), http.MethodGet, path, "")
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("path=%s status=%d body=%s", path, response.Code, response.Body)
+		}
+	}
+
 	invalid := request(newRouter(&foodUseCasesStub{}), http.MethodPost, "/api/food", `{"name":"x"}`)
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("invalid status=%d body=%s", invalid.Code, invalid.Body)
@@ -184,7 +256,7 @@ func TestWeightRoutesUseCurrentUserAndDateRange(t *testing.T) {
 	stub := &weightUseCasesStub{items: []entity.Weight{{
 		DT: time.Date(2026, time.September, 15, 0, 0, 0, 0, time.UTC), Value: 82.4,
 	}}}
-	router := httpapi.NewRouter(&foodUseCasesStub{}, stub, &bundleUseCasesStub{}, httpapi.Options{})
+	router := httpapi.NewRouter(&foodUseCasesStub{}, stub, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 
 	listed := request(router, http.MethodGet, "/api/weight?from=2026-03-15&to=2026-09-15", "")
 	if listed.Code != http.StatusOK || stub.userID != "00000000-0000-4000-8000-000000000000" {
@@ -209,7 +281,7 @@ func TestWeightRoutesUseCurrentUserAndDateRange(t *testing.T) {
 }
 
 func TestWeightValidationAndErrors(t *testing.T) {
-	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, httpapi.Options{})
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 	for _, requestData := range []struct {
 		method string
 		path   string
@@ -225,7 +297,7 @@ func TestWeightValidationAndErrors(t *testing.T) {
 		}
 	}
 
-	notFound := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{err: port.ErrWeightNotFound}, &bundleUseCasesStub{}, httpapi.Options{})
+	notFound := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{err: port.ErrWeightNotFound}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 	if response := request(notFound, http.MethodDelete, "/api/weight/2026-09-15", ""); response.Code != http.StatusNotFound {
 		t.Fatalf("not found status=%d body=%s", response.Code, response.Body)
 	}
@@ -235,11 +307,11 @@ func TestBundleRoutes(t *testing.T) {
 	stub := &bundleUseCasesStub{items: []entity.BundleSummary{{
 		Key: bundleKey, Name: "Завтрак", ItemCount: 1, Totals: sampleBundle.Totals,
 	}}}
-	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, stub, httpapi.Options{})
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, stub, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 
 	listed := request(router, http.MethodGet, "/api/bundle?q=%D0%B7%D0%B0%D0%B2%D1%82%D1%80%D0%B0%D0%BA", "")
-	if listed.Code != http.StatusOK || stub.query != "завтрак" || !strings.Contains(listed.Body.String(), "\"itemCount\":1") {
-		t.Fatalf("list status=%d query=%q body=%s", listed.Code, stub.query, listed.Body)
+	if listed.Code != http.StatusOK || stub.request.Query != "завтрак" || stub.request.Page != 1 || stub.request.PageSize != 20 || !strings.Contains(listed.Body.String(), "\"itemCount\":1") {
+		t.Fatalf("list status=%d request=%+v body=%s", listed.Code, stub.request, listed.Body)
 	}
 	loaded := request(router, http.MethodGet, "/api/bundle/"+bundleKey, "")
 	if loaded.Code != http.StatusOK || !strings.Contains(loaded.Body.String(), "\"food\":{\"key\":\""+foodKey) {
@@ -261,7 +333,7 @@ func TestBundleRoutes(t *testing.T) {
 }
 
 func TestBundleValidationAndErrors(t *testing.T) {
-	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, httpapi.Options{})
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 	if response := request(router, http.MethodPost, "/api/bundle", "{\"name\":\"Тест\"}"); response.Code != http.StatusBadRequest {
 		t.Fatalf("validation status=%d body=%s", response.Code, response.Body)
 	}
@@ -273,7 +345,7 @@ func TestBundleValidationAndErrors(t *testing.T) {
 		{port.ErrBundleConflict, http.StatusConflict},
 		{errors.New("database unavailable"), http.StatusInternalServerError},
 	} {
-		errorRouter := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{err: test.err}, httpapi.Options{})
+		errorRouter := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{err: test.err}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 		if response := request(errorRouter, http.MethodGet, "/api/bundle/"+bundleKey, ""); response.Code != test.status {
 			t.Fatalf("error=%v status=%d want=%d body=%s", test.err, response.Code, test.status, response.Body)
 		}
@@ -288,8 +360,112 @@ func TestDeleteUsedFoodReturnsConflict(t *testing.T) {
 	}
 }
 
+func TestSettingsRoutesUseCurrentUser(t *testing.T) {
+	limit := 2300
+	stub := &settingsUseCasesStub{item: &entity.UserSettings{DefaultDailyCalorieLimit: limit}}
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, stub, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+
+	loaded := request(router, http.MethodGet, "/api/settings", "")
+	if loaded.Code != http.StatusOK || stub.userID != "00000000-0000-4000-8000-000000000000" || !strings.Contains(loaded.Body.String(), `"defaultDailyCalorieLimit":2300`) {
+		t.Fatalf("get status=%d user=%q body=%s", loaded.Code, stub.userID, loaded.Body)
+	}
+
+	saved := request(router, http.MethodPut, "/api/settings", `{"defaultDailyCalorieLimit":2450}`)
+	if saved.Code != http.StatusOK || stub.saved.DefaultDailyCalorieLimit != 2450 {
+		t.Fatalf("save status=%d data=%+v body=%s", saved.Code, stub.saved, saved.Body)
+	}
+}
+
+func TestSettingsEmptyAndValidation(t *testing.T) {
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+	empty := request(router, http.MethodGet, "/api/settings", "")
+	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), `"defaultDailyCalorieLimit":null`) {
+		t.Fatalf("empty status=%d body=%s", empty.Code, empty.Body)
+	}
+
+	for _, body := range []string{
+		`{}`,
+		`{"defaultDailyCalorieLimit":null}`,
+		`{"defaultDailyCalorieLimit":2000.5}`,
+		`{"defaultDailyCalorieLimit":2000,"extra":true}`,
+	} {
+		response := request(router, http.MethodPut, "/api/settings", body)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("body=%s status=%d response=%s", body, response.Code, response.Body)
+		}
+	}
+
+	validation := &entity.ValidationError{Fields: map[string][]string{
+		"defaultDailyCalorieLimit": {"Введите целое число от 1 до 10000"},
+	}}
+	invalidRouter := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{err: validation}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+	response := request(invalidRouter, http.MethodPut, "/api/settings", `{"defaultDailyCalorieLimit":0}`)
+	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "defaultDailyCalorieLimit") {
+		t.Fatalf("validation status=%d body=%s", response.Code, response.Body)
+	}
+}
+
+func TestJournalRoutesUseCurrentUser(t *testing.T) {
+	dt := time.Date(2026, time.September, 16, 0, 0, 0, 0, time.UTC)
+	day := entity.JournalDay{
+		DT: dt,
+		Zones: []entity.JournalZone{{
+			Meal:   entity.MealBreakfast,
+			Items:  []entity.JournalItem{{Meal: entity.MealBreakfast, Food: sampleFood, Weight: 200}},
+			Totals: entity.JournalTotals{Weight: 200, Cal: 240, Protein: 36, Fat: 10, Carb: 6},
+		}},
+		Totals:       entity.JournalTotals{Weight: 200, Cal: 240, Protein: 36, Fat: 10, Carb: 6},
+		MacroPercent: entity.MacroPercent{Protein: 69.23, Fat: 19.23, Carb: 11.54},
+	}
+	stub := &journalUseCasesStub{day: day}
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, stub, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+
+	loaded := request(router, http.MethodGet, "/api/journal?dt=2026-09-16", "")
+	if loaded.Code != http.StatusOK || stub.userID != "00000000-0000-4000-8000-000000000000" || stub.dt.Format("2006-01-02") != "2026-09-16" || !strings.Contains(loaded.Body.String(), `"macroPercent"`) {
+		t.Fatalf("get status=%d stub=%+v body=%s", loaded.Code, stub, loaded.Body)
+	}
+	body := `{"dt":"2026-09-16","meal":"завтрак","items":[{"foodKey":"` + foodKey + `","weight":150}]}`
+	saved := request(router, http.MethodPost, "/api/journal", body)
+	if saved.Code != http.StatusOK || stub.meal != entity.MealBreakfast || len(stub.items) != 1 || stub.items[0].Weight != 150 {
+		t.Fatalf("save status=%d stub=%+v body=%s", saved.Code, stub, saved.Body)
+	}
+	mealPath := "%D0%B7%D0%B0%D0%B2%D1%82%D1%80%D0%B0%D0%BA"
+	deleted := request(router, http.MethodDelete, "/api/journal/2026-09-16/"+mealPath+"/"+foodKey, "")
+	if deleted.Code != http.StatusOK || stub.foodKey != foodKey {
+		t.Fatalf("delete status=%d stub=%+v body=%s", deleted.Code, stub, deleted.Body)
+	}
+	cleared := request(router, http.MethodDelete, "/api/journal/2026-09-16/"+mealPath, "")
+	if cleared.Code != http.StatusOK || stub.meal != entity.MealBreakfast {
+		t.Fatalf("clear status=%d stub=%+v body=%s", cleared.Code, stub, cleared.Body)
+	}
+}
+
+func TestJournalValidationAndErrors(t *testing.T) {
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+	for _, test := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/journal?dt=wrong", ""},
+		{http.MethodPost, "/api/journal", `{}`},
+		{http.MethodPost, "/api/journal", `{"dt":"2026-09-16","meal":"завтрак","items":[{}]}`},
+		{http.MethodDelete, "/api/journal/wrong/%D0%B7%D0%B0%D0%B2%D1%82%D1%80%D0%B0%D0%BA/" + foodKey, ""},
+	} {
+		response := request(router, test.method, test.path, test.body)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("%s %s status=%d body=%s", test.method, test.path, response.Code, response.Body)
+		}
+	}
+	notFound := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{err: port.ErrJournalItemNotFound}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
+	response := request(notFound, http.MethodDelete, "/api/journal/2026-09-16/%D0%B7%D0%B0%D0%B2%D1%82%D1%80%D0%B0%D0%BA/"+foodKey, "")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("not found status=%d body=%s", response.Code, response.Body)
+	}
+}
+
 func TestRequireCertificate(t *testing.T) {
-	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, httpapi.Options{CertificateRequired: true})
+	router := httpapi.NewRouter(&foodUseCasesStub{}, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{CertificateRequired: true})
 	if response := request(router, http.MethodGet, "/api/food", ""); response.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body)
 	}
@@ -297,7 +473,7 @@ func TestRequireCertificate(t *testing.T) {
 
 func newRouter(stub port.FoodUseCases) http.Handler {
 	gin.SetMode(gin.TestMode)
-	return httpapi.NewRouter(stub, &weightUseCasesStub{}, &bundleUseCasesStub{}, httpapi.Options{})
+	return httpapi.NewRouter(stub, &weightUseCasesStub{}, &bundleUseCasesStub{}, &settingsUseCasesStub{}, &journalUseCasesStub{}, &activeCaloriesUseCasesStub{}, httpapi.Options{})
 }
 
 func request(handler http.Handler, method, path, body string) *httptest.ResponseRecorder {

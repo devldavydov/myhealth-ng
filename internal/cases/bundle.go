@@ -19,8 +19,12 @@ func NewBundle(repository port.BundleRepository) *Bundle {
 	return &Bundle{repository: repository, generateKey: randomUUID}
 }
 
-func (bundle *Bundle) List(ctx context.Context, query string) ([]entity.BundleSummary, error) {
-	return bundle.repository.List(ctx, strings.TrimSpace(query))
+func (bundle *Bundle) List(ctx context.Context, request entity.PageRequest) (entity.Page[entity.BundleSummary], error) {
+	request, err := normalizePageRequest(request)
+	if err != nil {
+		return entity.Page[entity.BundleSummary]{}, err
+	}
+	return bundle.repository.List(ctx, request)
 }
 
 func (bundle *Bundle) Get(ctx context.Context, key string) (entity.Bundle, error) {

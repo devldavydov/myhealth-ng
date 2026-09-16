@@ -14,7 +14,7 @@ const testKey = "3f67c05f-7c9e-4cb5-b26a-f9ce5b065865"
 
 type foodRepositoryStub struct {
 	items      []entity.Food
-	query      string
+	request    entity.PageRequest
 	created    entity.Food
 	updatedKey string
 	updated    entity.FoodData
@@ -22,9 +22,9 @@ type foodRepositoryStub struct {
 	err        error
 }
 
-func (stub *foodRepositoryStub) List(_ context.Context, query string) ([]entity.Food, error) {
-	stub.query = query
-	return stub.items, stub.err
+func (stub *foodRepositoryStub) List(_ context.Context, request entity.PageRequest) (entity.Page[entity.Food], error) {
+	stub.request = request
+	return entity.Page[entity.Food]{Items: stub.items, Page: request.Page, PageSize: request.PageSize, Total: len(stub.items)}, stub.err
 }
 func (stub *foodRepositoryStub) Get(_ context.Context, _ string) (entity.Food, error) {
 	if len(stub.items) == 0 {
@@ -79,11 +79,11 @@ func TestFoodValidation(t *testing.T) {
 func TestFoodListTrimsQuery(t *testing.T) {
 	repository := &foodRepositoryStub{}
 	useCases := NewFood(repository)
-	if _, err := useCases.List(context.Background(), "  молоко  "); err != nil {
+	if _, err := useCases.List(context.Background(), entity.PageRequest{Query: "  молоко  "}); err != nil {
 		t.Fatal(err)
 	}
-	if repository.query != "молоко" {
-		t.Fatalf("query = %q", repository.query)
+	if repository.request.Query != "молоко" || repository.request.Page != 1 || repository.request.PageSize != 20 {
+		t.Fatalf("request = %+v", repository.request)
 	}
 }
 

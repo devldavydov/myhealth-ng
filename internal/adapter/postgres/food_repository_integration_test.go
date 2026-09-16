@@ -24,7 +24,7 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(context.Background(), "TRUNCATE bundle_item, bundle, food")
+		_, _ = db.ExecContext(context.Background(), "TRUNCATE journal, bundle_item, bundle, food")
 		_ = db.Close()
 	})
 	ctx := context.Background()
@@ -37,7 +37,7 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("second migration run must be idempotent: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, "TRUNCATE bundle_item, bundle, food"); err != nil {
+	if _, err := db.ExecContext(ctx, "TRUNCATE journal, bundle_item, bundle, food"); err != nil {
 		t.Fatal(err)
 	}
 	repository := NewFoodRepository(db)
@@ -55,27 +55,31 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 		}
 	}
 
-	items, err := repository.List(ctx, "")
+	items, err := repository.List(ctx, entity.PageRequest{Page: 1, PageSize: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 2 || items[0].Name != "Банан" || items[1].Name != "яблоко" {
+	if len(items.Items) != 2 || items.Items[0].Name != "Банан" || items.Items[1].Name != "яблоко" || items.Total != 2 || items.TotalPages != 1 {
 		t.Fatalf("unexpected order: %+v", items)
 	}
-	percentMatches, err := repository.List(ctx, "100%")
-	if err != nil || len(percentMatches) != 1 || percentMatches[0].Key != banana.Key {
+	outOfRange, err := repository.List(ctx, entity.PageRequest{Page: 2, PageSize: 10})
+	if err != nil || len(outOfRange.Items) != 0 || outOfRange.Page != 2 || outOfRange.Total != 2 || outOfRange.TotalPages != 1 {
+		t.Fatalf("out-of-range page = %+v, err=%v", outOfRange, err)
+	}
+	percentMatches, err := repository.List(ctx, entity.PageRequest{Query: "100%", Page: 1, PageSize: 10})
+	if err != nil || len(percentMatches.Items) != 1 || percentMatches.Items[0].Key != banana.Key || percentMatches.Total != 1 {
 		t.Fatalf("literal percent search = %+v, err=%v", percentMatches, err)
 	}
-	underscoreMatches, err := repository.List(ctx, "_1")
-	if err != nil || len(underscoreMatches) != 1 || underscoreMatches[0].Key != apple.Key {
+	underscoreMatches, err := repository.List(ctx, entity.PageRequest{Query: "_1", Page: 1, PageSize: 10})
+	if err != nil || len(underscoreMatches.Items) != 1 || underscoreMatches.Items[0].Key != apple.Key {
 		t.Fatalf("literal underscore search = %+v, err=%v", underscoreMatches, err)
 	}
-	keyMatches, err := repository.List(ctx, "3f67c05f")
-	if err != nil || len(keyMatches) != 0 {
+	keyMatches, err := repository.List(ctx, entity.PageRequest{Query: "3f67c05f", Page: 1, PageSize: 10})
+	if err != nil || len(keyMatches.Items) != 0 {
 		t.Fatalf("key search = %+v, err=%v", keyMatches, err)
 	}
-	injectionMatches, err := repository.List(ctx, "%' OR true --")
-	if err != nil || len(injectionMatches) != 0 {
+	injectionMatches, err := repository.List(ctx, entity.PageRequest{Query: "%' OR true --", Page: 1, PageSize: 10})
+	if err != nil || len(injectionMatches.Items) != 0 {
 		t.Fatalf("injection-like search = %+v, err=%v", injectionMatches, err)
 	}
 

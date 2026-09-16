@@ -1,24 +1,16 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import AsyncSelect from "react-select/async";
-import { components, type GroupBase, type OptionProps } from "react-select";
 import {
   ApiError,
   createBundle,
   getBundleByKey,
-  getBundles,
-  getFood,
   updateBundle,
   type BundleItem,
-  type BundleSummary,
   type Food
 } from "../api";
+import { FoodBundlePicker, type FoodBundleOption } from "../components/FoodBundlePicker";
 
 type FormItem = { food: Food; weight: string };
-type SearchOption =
-  | { type: "food"; key: string; label: string; food: Food }
-  | { type: "bundle"; key: string; label: string; bundle: BundleSummary };
-type SearchGroup = GroupBase<SearchOption>;
 
 const numberFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 2 });
 
@@ -53,19 +45,6 @@ export function mergeBundleItems(current: FormItem[], added: BundleItem[]): Form
   return result;
 }
 
-function SearchOptionView(props: OptionProps<SearchOption, false, SearchGroup>) {
-  const option = props.data;
-  const detail = option.type === "food"
-    ? option.food.brand || "Без бренда"
-    : option.bundle.itemCount + " продуктов · " + numberFormat.format(option.bundle.totals.weight) + " г";
-  return (
-    <components.Option {...props}>
-      <span className={"search-option-kind " + option.type}>{option.type === "food" ? "Еда" : "Бандл"}</span>
-      <span className="search-option-copy"><strong>{option.label}</strong><small>{detail}</small></span>
-    </components.Option>
-  );
-}
-
 export function BundleFormPage() {
   const { key } = useParams<{ key: string }>();
   const navigate = useNavigate();
@@ -81,9 +60,6 @@ export function BundleFormPage() {
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [pickerMessage, setPickerMessage] = useState("");
-  const debounceTimer = useRef<number | undefined>(undefined);
-  const pendingResolve = useRef<((groups: SearchGroup[]) => void) | null>(null);
-  const requestSequence = useRef(0);
 
   useEffect(() => {
     if (!key) return;
@@ -102,55 +78,7 @@ export function BundleFormPage() {
     return () => { cancelled = true; };
   }, [key]);
 
-  useEffect(() => () => {
-    if (debounceTimer.current !== undefined) window.clearTimeout(debounceTimer.current);
-    pendingResolve.current?.([]);
-    requestSequence.current++;
-  }, []);
-
-  const loadOptions = useCallback((inputValue: string): Promise<SearchGroup[]> => {
-    const sequence = ++requestSequence.current;
-    if (debounceTimer.current !== undefined) {
-      window.clearTimeout(debounceTimer.current);
-      pendingResolve.current?.([]);
-    }
-    return new Promise((resolve) => {
-      pendingResolve.current = resolve;
-      debounceTimer.current = window.setTimeout(() => {
-        debounceTimer.current = undefined;
-        pendingResolve.current = null;
-        void Promise.all([getFood(inputValue), getBundles(inputValue)])
-          .then(([food, bundles]) => {
-            if (sequence !== requestSequence.current) {
-              resolve([]);
-              return;
-            }
-            const groups: SearchGroup[] = [
-              {
-                label: "Еда",
-                options: food.map((item) => ({ type: "food" as const, key: item.key, label: item.name, food: item }))
-              },
-              {
-                label: "Бандлы",
-                options: bundles
-                  .filter((item) => item.key !== key)
-                  .map((item) => ({ type: "bundle" as const, key: item.key, label: item.name, bundle: item }))
-              }
-            ];
-            resolve(groups.filter((group) => group.options.length > 0));
-          })
-          .catch((requestError: unknown) => {
-            if (sequence === requestSequence.current) {
-              setError(requestError instanceof Error ? requestError.message : "Не удалось выполнить поиск");
-            }
-            resolve([]);
-          });
-      }, 250);
-    });
-  }, [key]);
-
-  async function addOption(option: SearchOption | null) {
-    if (!option) return;
+  async function addOption(option: FoodBundleOption) {
     setPickerMessage("");
     setItemsError("");
     if (option.type === "food") {
@@ -268,22 +196,13 @@ export function BundleFormPage() {
 
             <div className="bundle-picker-field">
               <label htmlFor="bundle-item-picker">Добавить продукт или бандл</label>
-              <AsyncSelect<SearchOption, false, SearchGroup>
-                aria-label="Поиск еды или бандла"
-                cacheOptions
-                classNamePrefix="bundle-select"
-                components={{ Option: SearchOptionView }}
-                defaultOptions
-                getOptionValue={(option) => option.type + ":" + option.key}
+              <FoodBundlePicker
+                disabled={saving || adding}
+                excludeBundleKey={key}
                 inputId="bundle-item-picker"
-                isClearable
-                isDisabled={saving || adding}
-                loadingMessage={() => "Ищем…"}
-                loadOptions={loadOptions}
-                noOptionsMessage={() => "Ничего не найдено"}
-                onChange={(option) => void addOption(option)}
+                onError={setError}
+                onSelect={addOption}
                 placeholder={adding ? "Добавляем бандл…" : "Начните вводить название"}
-                value={null}
               />
               {pickerMessage && <p className="form-hint" aria-live="polite">{pickerMessage}</p>}
               {itemsError && <span className="field-error" role="alert">{itemsError}</span>}

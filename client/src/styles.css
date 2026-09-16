@@ -211,6 +211,12 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 }
 .search-form { margin-bottom: 22px; }
 .search-form input { flex: 1; }
+.catalog-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-top: 22px; padding: 14px 16px; border: 1px solid #dce8e4; border-radius: 14px; background: #f8fbfa; }
+.catalog-pagination label { display: flex; align-items: center; gap: 9px; color: #617470; font-size: 13px; font-weight: 700; }
+.catalog-pagination select { min-height: 40px; padding: 8px 32px 8px 10px; border: 1px solid #cddbd7; border-radius: 9px; color: #29433f; background: #fff; font: inherit; }
+.catalog-pagination-nav { display: flex; align-items: center; gap: 12px; }
+.catalog-pagination-nav span { min-width: 112px; color: #617470; font-size: 13px; font-weight: 700; text-align: center; }
+.catalog-pagination-nav .button { min-height: 40px; padding: 9px 13px; }
 .error, .empty { padding: 16px; border-radius: 12px; }
 .error { margin-bottom: 16px; color: #8f303b; background: #fae8ea; }
 .empty { color: #637773; background: #eaf1ef; }
@@ -395,12 +401,118 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .weight-row strong { color: #126f68; font-size: 21px; white-space: nowrap; }
 .weight-row small { color: #758985; font-size: 11px; }
 
+.settings-page .form-page-header,
+.settings-page .settings-card { width: min(620px, 100%); }
+.settings-card form { gap: 22px; }
+.settings-card .form-actions { margin-top: 4px; }
+.save-success {
+  padding: 13px 15px;
+  border-radius: 11px;
+  color: #245f56;
+  background: #e2f2ed;
+  font-size: 13px;
+  font-weight: 700;
+}
+.timed-notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.notification-timer {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  fill: none;
+  stroke-width: 2.5;
+}
+.notification-timer-track { stroke: rgba(36, 95, 86, .2); }
+.notification-timer-progress {
+  stroke: #2b8176;
+  stroke-linecap: round;
+  stroke-dasharray: 50.27;
+  stroke-dashoffset: 0;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: notification-countdown linear forwards;
+}
+
+@keyframes notification-countdown {
+  to { stroke-dashoffset: 50.27; }
+}
+
+.journal-page-header { align-items: end; margin-bottom: 24px; }
+.journal-date-control { display: grid; grid-template-columns: 44px minmax(150px, 190px) 44px auto; gap: 8px; }
+.journal-date-control .button { min-width: 0; padding: 8px; }
+.journal-today-button { padding-inline: 14px !important; }
+.journal-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 24px;
+  border: 1px solid #d5e5e0;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 10px 34px rgba(34, 67, 61, .05);
+}
+.journal-calories { display: grid; align-content: center; gap: 4px; }
+.journal-calories span, .journal-calories small { color: #718681; font-size: 11px; font-weight: 700; }
+.journal-calories strong { color: #126f68; font-size: 28px; }
+.journal-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 0; }
+.journal-macros div { padding: 13px; border-radius: 12px; background: #f2f7f5; }
+.journal-macros dt { color: #738783; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.journal-macros dd { margin: 4px 0 2px; font-size: 15px; font-weight: 800; }
+.journal-macros small { color: #24766d; font-size: 12px; font-weight: 800; }
+.active-calories-form { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(220px, 360px) auto; align-items: start; gap: 12px; padding-top: 4px; }
+.active-calories-form label { display: grid; gap: 5px; color: #536965; font-size: 11px; font-weight: 700; }
+.active-calories-form input { min-height: 44px; padding: 9px 10px; }
+.active-calories-actions { display: flex; align-items: start; gap: 8px; padding-top: 16px; }
+.calorie-goal { grid-column: 1 / -1; display: grid; gap: 9px; }
+.calorie-goal > div:first-child { display: flex; justify-content: space-between; gap: 16px; color: #536965; font-size: 12px; }
+.calorie-goal-track { height: 9px; overflow: hidden; border-radius: 999px; background: #e4eeeb; }
+.calorie-goal-track span { display: block; height: 100%; border-radius: inherit; background: #2b9185; }
+.calorie-goal.exceeded .calorie-goal-track span { background: #c9535e; }
+.calorie-goal-empty { grid-column: 1 / -1; margin: 0; color: #657975; font-size: 13px; }
+.calorie-goal-empty a { color: #167d74; font-weight: 800; }
+.journal-page > .save-success { margin-bottom: 16px; }
+.journal-zones { display: grid; gap: 16px; }
+.journal-zone {
+  overflow: hidden;
+  border: 1px solid #dce8e4;
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 7px 24px rgba(34, 67, 61, .035);
+}
+.journal-zone-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; }
+.journal-zone-header h2 { margin-bottom: 4px; font-size: 21px; text-transform: capitalize; }
+.journal-zone-header p { margin: 0; color: #718681; font-size: 11px; }
+.journal-zone-actions { display: flex; gap: 3px; }
+.journal-zone-empty { margin: 0; padding: 14px 20px 18px; border-top: 1px solid #edf2f0; color: #81928e; font-size: 13px; }
+.journal-add-panel { display: grid; gap: 12px; padding: 16px 20px; border-top: 1px solid #e5eeeb; background: #f8fbfa; }
+.journal-weight-form { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; align-items: start; gap: 12px; }
+.journal-weight-form > div { display: grid; align-self: center; gap: 2px; }
+.journal-weight-form > div small { color: #7a8c88; font-size: 10px; }
+.journal-weight-form label { display: grid; gap: 5px; color: #536965; font-size: 11px; font-weight: 700; }
+.journal-weight-form input { min-height: 44px; padding: 9px 10px; }
+.journal-weight-form .button { align-self: end; }
+.journal-items { border-top: 1px solid #edf2f0; }
+.journal-item { display: grid; grid-template-columns: minmax(0, 1fr) 90px 100px auto; align-items: center; gap: 14px; min-height: 61px; padding: 9px 11px 9px 20px; }
+.journal-item + .journal-item { border-top: 1px solid #edf2f0; }
+.journal-item > div { display: grid; min-width: 0; gap: 2px; }
+.journal-item > div strong, .journal-item > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.journal-item > div small { color: #7a8c88; font-size: 10px; }
+.journal-item > span { color: #536965; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
 @media (max-width: 860px) {
   .page { padding-top: 36px; }
   .weight-overview { grid-template-columns: 1fr; }
   .weight-entry-form { grid-template-columns: 1fr 1fr auto; align-items: start; }
   .weight-entry-form .button { align-self: end; }
   .weight-entry-form .form-hint { grid-column: 1 / -1; }
+  .journal-page-header { align-items: flex-start; }
+  .journal-summary { grid-template-columns: 1fr; }
+  .calorie-goal, .calorie-goal-empty { grid-column: auto; }
 }
 
 @media (max-width: 620px) {
@@ -412,7 +524,7 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .brand > span:last-child { display: none; }
   .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
   nav { justify-content: center; gap: 2px; }
-  nav a { padding: 9px 7px; font-size: 12px; }
+  nav a { padding: 9px 5px; font-size: 11px; }
   .page, .food-form-page { width: calc(100% - 24px); padding: 24px 0 56px; }
   h1 { font-size: 32px; }
   h2 { font-size: 25px; }
@@ -422,6 +534,7 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .back-link { min-height: 40px; align-items: center; margin: -8px 0 14px; }
   .form-page-header { margin-bottom: 20px; }
   .food-form-card { padding: 20px 18px; border-radius: 18px; }
+  .settings-card .button { width: 100%; }
   input:not([type="radio"]), textarea { min-height: 46px; font-size: 16px; }
   .nutrition-grid { grid-template-columns: 1fr; }
   .mode-switch { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -429,6 +542,11 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .search-form { display: grid; grid-template-columns: 1fr 1fr; }
   .search-form input { grid-column: 1 / -1; }
   .search-form .button:only-of-type { grid-column: 1 / -1; }
+  .catalog-pagination { align-items: stretch; flex-direction: column; padding: 13px; }
+  .catalog-pagination label { justify-content: space-between; }
+  .catalog-pagination-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 7px; }
+  .catalog-pagination-nav span { min-width: 0; }
+  .catalog-pagination-nav .button { padding-inline: 8px; }
   .food-card { padding: 18px 16px 12px; border-radius: 15px; }
   .food-card-heading { gap: 12px; }
   .food-card-heading > strong { font-size: 19px; }
@@ -453,10 +571,28 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .bundle-item-row { grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; }
   .bundle-item-row .text-button { grid-column: 1 / -1; border-top: 1px solid #e2ebe8; }
   .bundle-total { display: grid; gap: 5px; }
+  .journal-date-control { width: 100%; grid-template-columns: 44px 1fr 44px; }
+  .journal-today-button { grid-column: 1 / -1; }
+  .journal-summary { padding: 18px 16px; border-radius: 18px; }
+  .journal-calories strong { font-size: 25px; }
+  .journal-macros { gap: 6px; }
+  .journal-macros div { padding: 10px 8px; }
+  .calorie-goal > div:first-child { display: grid; gap: 4px; }
+  .journal-zone-header { align-items: flex-start; padding: 16px 14px; }
+  .journal-zone-actions { flex-direction: column; }
+  .journal-add-panel { padding: 14px; }
+  .active-calories-form { grid-template-columns: 1fr; }
+  .active-calories-actions { display: grid; grid-template-columns: 1fr; padding-top: 0; }
+  .active-calories-actions .button { width: 100%; }
+  .journal-weight-form { grid-template-columns: 1fr; }
+  .journal-weight-form .button { width: 100%; }
+  .journal-item { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; padding: 11px 9px 11px 14px; }
+  .journal-item > span { text-align: right; }
+  .journal-item .text-button { grid-column: 1 / -1; border-top: 1px solid #edf2f0; }
 }
 
 @media (max-width: 380px) {
-  nav a { padding-inline: 5px; font-size: 11px; }
+  nav a { padding-inline: 3px; font-size: 10px; }
   .food-card-heading { flex-direction: column; }
   .food-card-heading > strong { align-self: flex-start; }
   .bundle-item-row { grid-template-columns: 1fr; }
