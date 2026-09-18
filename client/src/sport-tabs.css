@@ -1,0 +1,10 @@
+.activity-tabs { display: flex; gap: 6px; margin: 0 0 28px; padding: 5px; border: 1px solid #dce8e4; border-radius: 14px; background: #edf3f1; }
+.activity-tabs button { flex: 1; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; color: #60736f; background: transparent; font: inherit; font-weight: 800; cursor: pointer; }
+.activity-tabs button.active { color: #126b64; background: #fff; box-shadow: 0 3px 12px rgba(34,67,61,.08); }
+.sport-activity-page [role="tabpanel"] { min-width: 0; }
+.food-form-card .set-fields label span { display: flex; gap: 6px; }
+.food-form-card .set-fields .text-button { min-width: 44px; }
+
+@media (max-width: 620px) {
+  .sport-activity-page .page-header .button { width: 100%; }
+}

@@ -1,8 +1,14 @@
 import "./user-badge.css";
+import "./sport.css";
+import "./sport-tabs.css";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { getCurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
+import { SportFormPage } from "./pages/SportPage";
+import { SportCatalogPage } from "./pages/SportCatalogPage";
+import { SportActivityOverviewPage } from "./pages/SportActivityOverviewPage";
+import { SportActivityFormPage } from "./pages/SportActivityFormPage";
 import { FoodPage } from "./pages/FoodPage";
 
 const WeightPage = lazy(() => import("./pages/WeightPage").then((module) => ({ default: module.WeightPage })));
@@ -15,7 +21,9 @@ const sections = [
   { path: "/journal", label: "Журнал" },
   { path: "/food", label: "Еда" },
   { path: "/bundle", label: "Бандлы" },
-  { path: "/weight", label: "Вес" }
+  { path: "/weight", label: "Вес" },
+  { path: "/sport", label: "Спорт" },
+  { path: "/sport-activity", label: "Активность" }
 ];
 
 export function App() {
@@ -66,6 +74,12 @@ export function App() {
               <BundleFormPage />
             </Suspense>
           )} />
+          <Route path="/sport" element={<SportCatalogPage />} />
+          <Route path="/sport/new" element={<SportFormPage />} />
+          <Route path="/sport/:key/edit" element={<SportFormPage />} />
+          <Route path="/sport-activity" element={<SportActivityOverviewPage />} />
+          <Route path="/sport-activity/new" element={<SportActivityFormPage />} />
+          <Route path="/sport-activity/:dt/:sportKey/edit" element={<SportActivityFormPage />} />
           <Route path="/weight" element={(
             <Suspense fallback={<div className="page"><p className="muted">Загрузка раздела…</p></div>}>
               <WeightPage />

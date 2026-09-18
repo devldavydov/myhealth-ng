@@ -100,9 +100,12 @@ export function FoodBundlePicker({ disabled, excludeBundleKey, inputId = "food-b
       isDisabled={disabled}
       loadingMessage={() => "Ищем…"}
       loadOptions={loadOptions}
+      menuPortalTarget={document.body}
+      menuPosition="fixed"
       noOptionsMessage={() => "Ничего не найдено"}
       onChange={(option) => { if (option) void onSelect(option); }}
       placeholder={placeholder ?? "Начните вводить название"}
+      styles={{ menuPortal: (base) => ({ ...base, zIndex: 1000 }) }}
       value={null}
     />
   );

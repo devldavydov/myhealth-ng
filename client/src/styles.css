@@ -523,7 +523,7 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   }
   .brand > span:last-child { display: none; }
   .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
-  nav { justify-content: center; gap: 2px; }
+  nav { justify-content: flex-start; gap: 2px; overflow-x: auto; }
   nav a { padding: 9px 5px; font-size: 11px; }
   .page, .food-form-page { width: calc(100% - 24px); padding: 24px 0 56px; }
   h1 { font-size: 32px; }

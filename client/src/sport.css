@@ -1,0 +1,32 @@
+.sport-entry-panel { margin-bottom: 36px; }
+.sport-entry-panel h2, .sport-statistics h2 { margin-bottom: 20px; }
+.sport-entry-form { display: grid; gap: 18px; }
+.sport-entry-form > .field { max-width: 420px; }
+.set-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.set-fields label span { display: flex; align-items: center; gap: 6px; }
+.set-fields .text-button { min-width: 42px; min-height: 42px; padding: 8px; font-size: 20px; }
+.sport-activity-list { margin: 36px 0; }
+.sport-activity-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto auto; align-items: center; gap: 18px; padding: 17px 18px; border: 1px solid #dee9e5; border-radius: 15px; background: #fff; }
+.sport-activity-row time { color: #526964; font-size: 13px; font-weight: 700; }
+.sport-activity-row > div:nth-child(2) { display: grid; gap: 6px; }
+.sport-activity-row p { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; color: #657975; font-size: 12px; }
+.sport-activity-row > strong { color: #126f68; white-space: nowrap; }
+.sport-table-wrap { overflow-x: auto; }
+.sport-table-wrap table { width: 100%; border-collapse: collapse; }
+.sport-table-wrap th, .sport-table-wrap td { padding: 13px 12px; border-bottom: 1px solid #e4ece9; text-align: left; }
+.sport-table-wrap th { color: #657975; font-size: 11px; text-transform: uppercase; }
+.sport-table-wrap td:last-child { color: #126f68; font-weight: 800; }
+.sport-chart-select { max-width: 420px; margin-top: 24px; }
+.sport-chart { width: 100%; height: 340px; margin-top: 18px; }
+.sport-chart-select + .chart-empty { margin-top: 18px; }
+select { min-height: 44px; padding: 10px 36px 10px 12px; border: 1px solid #ccdad6; border-radius: 10px; color: #173330; background: #fbfdfc; font: inherit; }
+
+@media (max-width: 860px) {
+  .sport-activity-row { grid-template-columns: 140px minmax(0, 1fr) auto; }
+  .sport-activity-row .food-actions { grid-column: 2 / -1; }
+}
+@media (max-width: 620px) {
+  .sport-activity-row { grid-template-columns: 1fr; gap: 8px; }
+  .sport-activity-row .food-actions { grid-column: auto; }
+  .sport-chart { height: 280px; }
+}

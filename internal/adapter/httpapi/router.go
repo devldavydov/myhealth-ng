@@ -11,6 +11,10 @@ type Options struct {
 }
 
 func NewRouter(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, options Options) *gin.Engine {
+	return NewRouterWithSport(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, nil, nil, options)
+}
+
+func NewRouterWithSport(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, sportCases port.SportUseCases, sportActivityCases port.SportActivityUseCases, options Options) *gin.Engine {
 	router := gin.New()
 	_ = router.SetTrustedProxies(nil)
 	router.Use(gin.Logger(), recovery(), identity(options.CertificateRequired))
@@ -46,6 +50,18 @@ func NewRouter(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bun
 	router.POST("/api/bundle", bundle.create)
 	router.PUT("/api/bundle/:key", bundle.update)
 	router.DELETE("/api/bundle/:key", bundle.delete)
+	if sportCases != nil && sportActivityCases != nil {
+		sport := newSportHandler(sportCases)
+		sportActivity := newSportActivityHandler(sportActivityCases)
+		router.GET("/api/sport", sport.list)
+		router.GET("/api/sport/:key", sport.get)
+		router.POST("/api/sport", sport.create)
+		router.PUT("/api/sport/:key", sport.update)
+		router.DELETE("/api/sport/:key", sport.delete)
+		router.GET("/api/sport-activity", sportActivity.list)
+		router.POST("/api/sport-activity", sportActivity.save)
+		router.DELETE("/api/sport-activity/:dt/:sportKey", sportActivity.delete)
+	}
 	router.NoRoute(notFound)
 
 	return router

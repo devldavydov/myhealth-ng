@@ -320,3 +320,14 @@ export async function deleteWeight(dt: string): Promise<void> {
   }
   throw new Error(message);
 }
+
+export interface Sport { key: string; name: string; unit: string; comment: string; }
+export type SportData = Omit<Sport, "key">;
+export interface SportActivityEntry { dt: string; sport: Sport; sets: number[]; }
+export interface SportActivityData { dt: string; sportKey: string; sets: number[]; }
+export async function getSports(query: PageQuery = {}): Promise<Page<Sport>> { return getPage<Sport>("/api/sport", query); }
+export async function getSport(key: string): Promise<Sport> { return (await apiRequest<{ data: Sport }>(`/api/sport/${encodeURIComponent(key)}`)).data; }
+export async function createSport(data: SportData): Promise<Sport> { return (await apiRequest<{ data: Sport }>("/api/sport", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })).data; }
+export async function updateSport(key: string, data: SportData): Promise<Sport> { return (await apiRequest<{ data: Sport }>(`/api/sport/${encodeURIComponent(key)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })).data; }
+export async function getSportActivities(from: string, to: string): Promise<SportActivityEntry[]> { return (await apiRequest<{ data: SportActivityEntry[] }>(`/api/sport-activity?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)).data; }
+export async function saveSportActivity(data: SportActivityData): Promise<SportActivityEntry> { return (await apiRequest<{ data: SportActivityEntry }>("/api/sport-activity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })).data; }

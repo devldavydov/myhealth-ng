@@ -79,6 +79,8 @@ func datasetLoaders(config Config) []datasetLoader {
 		newFoodLoader(config.DataDirectory),
 		newWeightLoader(config.DataDirectory, config.UserID),
 		newActiveCaloriesLoader(config.DataDirectory, config.UserID),
+		newSportLoader(config.DataDirectory),
+		newSportActivityLoader(config.DataDirectory, config.UserID),
 		newBundleLoader(config.DataDirectory),
 		newJournalLoader(config.DataDirectory, config.UserID),
 	}

@@ -9,6 +9,7 @@ import {
   YAxis
 } from "recharts";
 import { ApiError, deleteWeight, getWeight, saveWeight, type WeightEntry } from "../api";
+import { ChartYearLines, timeYearMarkers } from "../components/ChartYearLines";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 
 type Range = { from: string; to: string };
@@ -94,6 +95,7 @@ export function WeightPage() {
     ...entry,
     timestamp: parseLocalDate(entry.dt).getTime()
   })), [items]);
+  const yearMarkers = useMemo(() => timeYearMarkers(chartData), [chartData]);
 
   function updateRange(field: keyof Range, nextValue: string) {
     setRange((current) => ({ ...current, [field]: nextValue }));
@@ -214,7 +216,7 @@ export function WeightPage() {
           ) : (
             <div className="weight-chart" aria-label="График изменения веса">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart data={chartData} accessibilityLayer margin={{ top: 12, right: 14, bottom: 2, left: 0 }}>
+                <LineChart data={chartData} accessibilityLayer margin={{ top: 24, right: 14, bottom: 2, left: 0 }}>
                   <CartesianGrid stroke="#e2ebe8" strokeDasharray="4 4" vertical={false} />
                   <XAxis
                     dataKey="timestamp"
@@ -229,6 +231,7 @@ export function WeightPage() {
                     formatter={(weight) => [`${weightFormat.format(Number(weight))} кг`, "Вес"]}
                     labelFormatter={(timestamp) => dateFormat.format(new Date(Number(timestamp)))}
                   />
+                  <ChartYearLines markers={yearMarkers} />
                   <Line activeDot={{ r: 6 }} dataKey="value" dot={{ r: 4 }} stroke="#167d74" strokeWidth={3} type="linear" />
                 </LineChart>
               </ResponsiveContainer>

@@ -62,13 +62,17 @@ func New(config Config) (*Service, error) {
 	settingsRepository := postgresadapter.NewSettingsRepository(database)
 	journalRepository := postgresadapter.NewJournalRepository(database)
 	activeCaloriesRepository := postgresadapter.NewActiveCaloriesRepository(database)
+	sportRepository := postgresadapter.NewSportRepository(database)
+	sportActivityRepository := postgresadapter.NewSportActivityRepository(database)
 	foodCases := cases.NewFood(foodRepository)
 	weightCases := cases.NewWeight(weightRepository)
 	bundleCases := cases.NewBundle(bundleRepository)
 	settingsCases := cases.NewSettings(settingsRepository)
 	journalCases := cases.NewJournal(journalRepository)
 	activeCaloriesCases := cases.NewActiveCalories(activeCaloriesRepository)
-	router := httpapi.NewRouter(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, httpapi.Options{
+	sportCases := cases.NewSport(sportRepository)
+	sportActivityCases := cases.NewSportActivity(sportActivityRepository)
+	router := httpapi.NewRouterWithSport(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, sportCases, sportActivityCases, httpapi.Options{
 		CertificateRequired: config.RequireClientCertificate,
 	})
 

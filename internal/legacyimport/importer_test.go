@@ -20,13 +20,13 @@ func TestDatasetLoadersUseCurrentExportNames(t *testing.T) {
 	if !ok || weight.path != filepath.Join("/legacy", "weight.csv") {
 		t.Fatalf("unexpected weight loader: %#v", loaders[1])
 	}
-	bundle, ok := loaders[3].(bundleLoader)
+	bundle, ok := loaders[5].(bundleLoader)
 	if !ok || bundle.path != filepath.Join("/legacy", "bundle.csv") {
-		t.Fatalf("unexpected bundle loader: %#v", loaders[3])
+		t.Fatalf("unexpected bundle loader: %#v", loaders[5])
 	}
-	journal, ok := loaders[4].(journalLoader)
+	journal, ok := loaders[6].(journalLoader)
 	if !ok || journal.path != filepath.Join("/legacy", "journal.csv") || journal.userID != "local-user" {
-		t.Fatalf("unexpected journal loader: %#v", loaders[4])
+		t.Fatalf("unexpected journal loader: %#v", loaders[6])
 	}
 }
 

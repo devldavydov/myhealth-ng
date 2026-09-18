@@ -87,6 +87,11 @@ docker compose down -v    # остановить и удалить локаль�
 | `GET` | `/api/weight?from=YYYY-MM-DD&to=YYYY-MM-DD` | Вес текущего пользователя за период |
 | `POST` | `/api/weight` | Создание или замена веса за дату |
 | `DELETE` | `/api/weight/:dt` | Удаление веса за дату |
+| `GET` | `/api/sport` | Список и поиск видов спорта |
+| `GET/POST/PUT/DELETE` | `/api/sport[/:key]` | Ведение общего справочника спорта |
+| `GET` | `/api/sport-activity?from=YYYY-MM-DD&to=YYYY-MM-DD` | Активность текущего пользователя за период |
+| `POST` | `/api/sport-activity` | Создание или замена подходов за дату |
+| `DELETE` | `/api/sport-activity/:dt/:sportKey` | Удаление записи активности |
 
 Ключ создаётся сервером как UUID. Поиск регистронезависимый и выполняется по
 названию и бренду. Списки продуктов и бандлов принимают `page` и `pageSize`
@@ -149,7 +154,7 @@ bash -n deployment/*.sh
 ```
 
 Интеграционные тесты очищают таблицы `food`, `bundle`, `bundle_item`, `journal`,
-`weight`, `user_settings` и `act_calories` в указанной тестовой базе. Не направляйте
+`weight`, `user_settings`, `act_calories`, `sport` и `sport_activity` в указанной тестовой базе. Не направляйте
 `TEST_DATABASE_URL` на базу с нужными данными.
 
 ## Серверный запуск
