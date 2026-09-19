@@ -5,22 +5,33 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-require_root
-BUNDLE_INPUT=${1:-}
-[[ -n $BUNDLE_INPUT ]] && shift
+BUNDLE_INPUT=
 DATABASE_URL=
 SERVER_HOST=127.0.0.1
 SERVER_PORT=3000
+SERVER_HOST_SET=false
+SERVER_PORT_SET=false
 while (( $# > 0 )); do
   case "$1" in
-    --database-url) DATABASE_URL=${2:-}; shift 2 ;;
-    --server-host) SERVER_HOST=${2:-}; shift 2 ;;
-    --server-port) SERVER_PORT=${2:-}; shift 2 ;;
+    --database-url|--server-host|--server-port)
+      (( $# >= 2 )) && [[ $2 != --* ]] || { echo "Для $1 требуется значение" >&2; exit 1; }
+      case "$1" in
+        --database-url) DATABASE_URL=$2 ;;
+        --server-host) SERVER_HOST=$2; SERVER_HOST_SET=true ;;
+        --server-port) SERVER_PORT=$2; SERVER_PORT_SET=true ;;
+      esac
+      shift 2
+      ;;
     --help|-h)
       echo "Использование: sudo $0 <архив-релиза-или-каталог> [--database-url <url>] [--server-host 127.0.0.1] [--server-port 3000]"
       exit 0
       ;;
-    *) echo "Неизвестный аргумент: $1" >&2; exit 1 ;;
+    --*) echo "Неизвестный аргумент: $1" >&2; exit 1 ;;
+    *)
+      [[ -z $BUNDLE_INPUT ]] || { echo "Неожиданный позиционный аргумент: $1" >&2; exit 1; }
+      BUNDLE_INPUT=$1
+      shift
+      ;;
   esac
 done
 [[ -n $BUNDLE_INPUT ]] || { echo "Не указан архив релиза" >&2; exit 1; }
@@ -30,8 +41,13 @@ if [[ ! $SERVER_HOST =~ ^[A-Za-z0-9.:-]+$ || ! $SERVER_PORT =~ ^[0-9]+$ ||
   echo "Некорректный адрес или порт backend" >&2
   exit 1
 fi
+if [[ $DATABASE_URL == "" && ( $SERVER_HOST_SET == true || $SERVER_PORT_SET == true ) ]]; then
+  echo "Для изменения адреса или порта backend также передайте --database-url" >&2
+  exit 1
+fi
+require_root
 if [[ ! -f $MYHEALTH_SERVICE_OVERRIDE && -z $DATABASE_URL ]]; then
-  echo "Для первого обновления на PostgreSQL обязателен --database-url" >&2
+  echo "Конфигурация сервиса отсутствует: обязателен --database-url" >&2
   exit 1
 fi
 prepare_bundle_input "$BUNDLE_INPUT"
@@ -88,8 +104,14 @@ if ! systemctl restart myhealth.service; then
   exit 1
 fi
 
-# Миграция конфигураций, созданных до добавления UTF-8 в nginx-ответ 403.
 NGINX_SITE=/etc/nginx/sites-available/myhealth
+if [[ -n $DATABASE_URL && -f $NGINX_SITE ]]; then
+  NGINX_SERVER_HOST=$SERVER_HOST
+  [[ $NGINX_SERVER_HOST == *:* ]] && NGINX_SERVER_HOST=[$NGINX_SERVER_HOST]
+  SERVER_UPSTREAM=$NGINX_SERVER_HOST:$SERVER_PORT
+  sed -i -E "s|proxy_pass http://[^;]+;|proxy_pass http://$SERVER_UPSTREAM;|" "$NGINX_SITE"
+fi
+# Обновляем конфигурации, созданные до добавления UTF-8 в JSON-ответ 403.
 if [[ -f $NGINX_SITE ]] && ! grep -q 'charset utf-8;' "$NGINX_SITE"; then
   sed -i '/default_type application\/json;/a\        charset utf-8;' "$NGINX_SITE"
 fi

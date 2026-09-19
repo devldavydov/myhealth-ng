@@ -1,27 +1,31 @@
 # Развёртывание MyHealth
 
-## 1. Сборка
+Production-релиз состоит из статического Go-бинарника API, собранного React
+frontend и скриптов установки. PostgreSQL запускается отдельно; Go-сервис при
+старте проверяет подключение и автоматически применяет встроенные миграции.
 
-На машине разработчика с Go 1.26.5 и Node.js 20+:
+## 1. Сборка релиза
+
+На машине сборки нужны Go 1.26.5, Node.js 20+ и npm:
 
 ```bash
 ./deployment/build-bundles.sh 1.0.0
 ```
 
-Результат — один транспортный архив `artifacts/myhealth-1.0.0.tar.gz`. Внутри
-него находятся отдельные frontend/backend-бандлы, deploy-скрипты, версия и
-SHA-256 манифест. На сервер нужно перенести только этот файл.
+Скрипт запускает backend/frontend-тесты, собирает frontend и статический
+Linux-бинарник. Результат — транспортный архив
+`artifacts/myhealth-1.0.0.tar.gz` с frontend/backend-бандлами, deploy-скриптами,
+версией и SHA-256-манифестом. На сервер переносится только этот архив; Go и
+Node.js на сервере не нужны.
 
-Backend компилируется в статический Linux-бинарник, поэтому Go и Node.js на
-сервере не нужны. PostgreSQL разворачивается отдельно и должен быть доступен до
-установки приложения. По умолчанию используется архитектура машины сборки. Для
-кросс-компиляции, например под ARM64, задайте `MYHEALTH_GOARCH=arm64`:
+По умолчанию бинарник собирается для архитектуры машины сборки. Для другой
+архитектуры Linux задайте `MYHEALTH_GOARCH`, например:
 
 ```bash
 MYHEALTH_GOARCH=arm64 ./deployment/build-bundles.sh 1.0.0
 ```
 
-Вторым аргументом можно задать другое имя выходного архива:
+Второй аргумент задаёт другой путь выходного архива:
 
 ```bash
 ./deployment/build-bundles.sh 1.0.0 /tmp/myhealth-release.tar.gz
@@ -29,88 +33,92 @@ MYHEALTH_GOARCH=arm64 ./deployment/build-bundles.sh 1.0.0
 
 ## 2. Первая установка
 
-На новой Ubuntu сначала извлеките из архива deploy-скрипты, затем передайте
-сам архив установщику:
+До установки PostgreSQL должен быть доступен серверу по указанной строке
+подключения. На новой Ubuntu извлеките deploy-скрипты из архива и запустите
+установщик из извлечённого каталога:
 
 ```bash
 mkdir myhealth-installer
 tar -xzf myhealth-1.0.0.tar.gz -C myhealth-installer
 sudo ./myhealth-installer/deployment/install-server.sh ./myhealth-1.0.0.tar.gz \
-  --public-host health.example.com \
+  --public-host 111.88.251.114 \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 ```
 
-Необязательные параметры --https-port, --server-host и --server-port меняют
-соответственно внешний HTTPS-порт и адрес backend. Скрипт ставит Nginx и
-OpenSSL, создаёт systemd-сервис, локальный CA, серверный сертификат и
-устанавливает deploy-скрипты в стандартный каталог:
+Архив релиза — обязательный позиционный аргумент. `--public-host` и
+`--database-url` также обязательны. Дополнительные параметры:
 
-- `/opt/myhealth/releases/<version>` — неизменяемые версии;
+- `--https-port` — внешний HTTPS-порт, по умолчанию `443`;
+- `--server-host` — локальный адрес Go API, по умолчанию `127.0.0.1`;
+- `--server-port` — локальный порт Go API, по умолчанию `3000`.
+
+Установщик проверяет архив, устанавливает Nginx и OpenSSL, создаёт системного
+пользователя `myhealth`, приватный CA, серверный сертификат и systemd-сервис.
+Nginx раздаёт frontend, проксирует `/api/` в Go-сервис и требует клиентский
+сертификат.
+
+Файлы размещаются здесь:
+
+- `/opt/myhealth/releases/<version>` — неизменяемые версии приложения;
 - `/opt/myhealth/current` — ссылка на активную версию;
-- `/etc/myhealth` — окружение и PKI;
-- `/var/lib/myhealth` — состояние приложения;
-- `/usr/local/lib/myhealth-deployment` — deploy-инструменты;
+- `/etc/myhealth/pki` — CA и серверные ключи;
+- `/etc/systemd/system/myhealth.service.d/10-config.conf` — параметры Go API;
+- `/var/lib/myhealth` — рабочий каталог системного пользователя;
+- `/usr/local/lib/myhealth-deployment` — установленные deploy-инструменты.
 
-Параметры запуска backend записываются в
-`/etc/systemd/system/myhealth.service.d/10-config.conf`. Файл доступен только
-root, однако строка подключения также видна в аргументах процесса.
+Systemd drop-in доступен только root, однако database URL виден в аргументах
+процесса. Это ограничение текущей схемы конфигурации.
 
-Серверный сертификат подписан приватным MyHealth CA. Поэтому корневой
-сертификат из пользовательского комплекта необходимо сделать доверенным на
-устройстве. Без клиентского сертификата Nginx отвечает HTTP 403.
-
-## 3. Пользовательский сертификат
+## 3. Клиентские сертификаты
 
 ```bash
-# Новый пользователь: GUID будет создан автоматически
+# Новый пользователь: UUID создаётся автоматически
 sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh "Иван Иванов"
 
-# Перевыпуск сертификата с сохранением прежнего GUID
-sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh "Иван Иванов" 3f67c05f-7c9e-4cb5-b26a-f9ce5b065865
+# Перевыпуск для той же учётной записи с сохранением UUID
+sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh \
+  "Иван Иванов" 3f67c05f-7c9e-4cb5-b26a-f9ce5b065865
 ```
 
-Без второго аргумента создаются новая ключевая пара и новый UUID. Если передать
-существующий GUID вторым аргументом, сертификат будет перевыпущен для той же
-учётной записи. Необязательный третий аргумент задаёт каталог результата.
-Комплект содержит форматы для Linux, Windows, iOS/iPadOS и Android. Пароль
-PKCS#12 находится рядом; передавайте комплект только по защищённому каналу.
+Третий необязательный аргумент задаёт корневой каталог результата. По умолчанию
+комплект создаётся относительно текущего каталога:
+
+```text
+client-certificates/3f67c05f-7c9e-4cb5-b26a-f9ce5b065865_Иван_Иванов/
+```
+
+Пробелы и `/` в имени заменяются подчёркиваниями. Комплект содержит варианты
+для Linux, Windows, iOS/iPadOS и Android, корневой сертификат CA и пароль
+PKCS#12. Корневой сертификат нужно добавить в доверенные на устройстве;
+пользовательский комплект следует передавать только по защищённому каналу.
+Без валидного клиентского сертификата Nginx отвечает HTTP 403.
 
 ## 4. Обновление
 
 ```bash
-sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh /path/to/myhealth-1.1.0.tar.gz
+sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh \
+  /path/to/myhealth-1.1.0.tar.gz
 ```
 
-Архив распаковывается во временный каталог, а внутренние контрольные суммы
-проверяются до установки. Новая версия размещается отдельно, затем атомарно
-переключается `current`. При ошибке запуска сервис возвращается на предыдущий
-релиз. PKI, PostgreSQL и systemd drop-in с конфигурацией сохраняются.
+Архив и контрольные суммы проверяются до установки. Релиз размещается в новом
+каталоге, ссылка `current` переключается атомарно, а при ошибке запуска
+восстанавливаются предыдущий релиз, systemd unit и конфигурация. PKI,
+PostgreSQL и существующий systemd drop-in сохраняются.
 
-При первом переходе с версии, использовавшей environment-конфигурацию,
-необходимо передать строку подключения:
+Чтобы заменить строку подключения или параметры Go API, передайте новую строку
+подключения и нужные адрес/порт вместе:
 
 ```bash
-sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh /path/to/myhealth-1.1.0.tar.gz \
-  --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
+sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh \
+  /path/to/myhealth-1.1.0.tar.gz \
+  --database-url 'postgresql://myhealth:password@db.example.com/myhealth' \
+  --server-host 127.0.0.1 \
+  --server-port 3000
 ```
 
-Те же параметры можно использовать позднее, чтобы заменить database URL,
-backend host или backend port.
-
-## Переход с Node.js-бэкенда на Go
-
-Соберите архив с новым номером версии и перенесите его на сервер. Старый
-установленный upgrade-скрипт ожидает `server.cjs`, поэтому при первом переходе
-извлеките новый скрипт прямо из свежего архива:
-
-```bash
-mkdir myhealth-upgrade-1.0.1
-tar -xzf myhealth-1.0.1.tar.gz -C myhealth-upgrade-1.0.1
-sudo ./myhealth-upgrade-1.0.1/deployment/upgrade-server.sh ./myhealth-1.0.1.tar.gz
-```
-
-Существующий релиз удалять не нужно. После успешного обновления
-обычные скрипты в `/usr/local/lib/myhealth-deployment` также обновятся.
+Если systemd drop-in отсутствует, `--database-url` обязателен. После успешного
+обновления deploy-инструменты в `/usr/local/lib/myhealth-deployment` также
+заменяются версией из нового релиза.
 
 ## 5. Удаление
 
@@ -118,16 +126,18 @@ sudo ./myhealth-upgrade-1.0.1/deployment/upgrade-server.sh ./myhealth-1.0.1.tar.
 sudo /usr/local/lib/myhealth-deployment/uninstall-server.sh
 ```
 
-Скрипт требует ввести `DELETE`. Для автоматического запуска используйте
-`--yes`. Опция `--keep-pki` сохраняет CA и ключи для последующей переустановки.
-Nginx и OpenSSL не удаляются, поскольку могут использоваться другими
-приложениями. Созданные ранее пользовательские пакеты вне стандартных путей
-MyHealth также не удаляются.
+Скрипт требует ввести `DELETE`; `--yes` отключает подтверждение. Опция
+`--keep-pki` сохраняет `/etc/myhealth/pki`, чтобы ранее выпущенные клиентские
+сертификаты продолжили работать после переустановки. PostgreSQL, Nginx и
+OpenSSL не удаляются. Пользовательские комплекты сертификатов, созданные вне
+системных каталогов MyHealth, также не удаляются.
 
-## Проверка
+## Проверка и диагностика
 
 ```bash
 systemctl status myhealth nginx
 journalctl -u myhealth -n 100
 nginx -t
+curl --cacert root-ca.crt --cert client.crt --key client.key \
+  https://111.88.251.114/api/me
 ```

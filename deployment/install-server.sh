@@ -5,10 +5,8 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-require_root
 
-BUNDLE_INPUT=${1:-}
-[[ -n $BUNDLE_INPUT ]] && shift
+BUNDLE_INPUT=
 PUBLIC_HOST=
 HTTPS_PORT=443
 SERVER_HOST=127.0.0.1
@@ -16,16 +14,27 @@ SERVER_PORT=3000
 DATABASE_URL=
 while (( $# > 0 )); do
   case "$1" in
-    --public-host) PUBLIC_HOST=${2:-}; shift 2 ;;
-    --https-port) HTTPS_PORT=${2:-}; shift 2 ;;
-    --server-host) SERVER_HOST=${2:-}; shift 2 ;;
-    --server-port) SERVER_PORT=${2:-}; shift 2 ;;
-    --database-url) DATABASE_URL=${2:-}; shift 2 ;;
+    --public-host|--https-port|--server-host|--server-port|--database-url)
+      (( $# >= 2 )) && [[ $2 != --* ]] || { echo "Для $1 требуется значение" >&2; exit 1; }
+      case "$1" in
+        --public-host) PUBLIC_HOST=$2 ;;
+        --https-port) HTTPS_PORT=$2 ;;
+        --server-host) SERVER_HOST=$2 ;;
+        --server-port) SERVER_PORT=$2 ;;
+        --database-url) DATABASE_URL=$2 ;;
+      esac
+      shift 2
+      ;;
     --help|-h)
       echo "Использование: sudo $0 <архив-релиза-или-каталог> --public-host <домен-или-ip> --database-url <url> [--https-port 443] [--server-host 127.0.0.1] [--server-port 3000]"
       exit 0
       ;;
-    *) echo "Неизвестный аргумент: $1" >&2; exit 1 ;;
+    --*) echo "Неизвестный аргумент: $1" >&2; exit 1 ;;
+    *)
+      [[ -z $BUNDLE_INPUT ]] || { echo "Неожиданный позиционный аргумент: $1" >&2; exit 1; }
+      BUNDLE_INPUT=$1
+      shift
+      ;;
   esac
 done
 if [[ -z $BUNDLE_INPUT || -z $PUBLIC_HOST || -z $DATABASE_URL ]]; then
@@ -39,6 +48,7 @@ if [[ ! $PUBLIC_HOST =~ ^[A-Za-z0-9.:-]+$ || ! $SERVER_HOST =~ ^[A-Za-z0-9.:-]+$
   echo "Некорректный домен/IP, адрес или порт" >&2
   exit 1
 fi
+require_root
 SERVER_EXT=
 prepare_bundle_input "$BUNDLE_INPUT"
 trap 'cleanup_bundle_input; [[ -z ${SERVER_EXT:-} ]] || rm -f -- "$SERVER_EXT"' EXIT
@@ -84,9 +94,13 @@ install_release "$BUNDLE_DIR" "$VERSION"
 install -m 0644 "$SCRIPT_DIR/templates/myhealth.service" /etc/systemd/system/myhealth.service
 write_service_override "$DATABASE_URL" "$SERVER_HOST" "$SERVER_PORT"
 
+NGINX_SERVER_HOST=$SERVER_HOST
+[[ $NGINX_SERVER_HOST == *:* ]] && NGINX_SERVER_HOST=[$NGINX_SERVER_HOST]
+SERVER_UPSTREAM=$NGINX_SERVER_HOST:$SERVER_PORT
 sed \
   -e "s|__PUBLIC_HOST__|$PUBLIC_HOST|g" \
   -e "s|__HTTPS_PORT__|$HTTPS_PORT|g" \
+  -e "s|__SERVER_UPSTREAM__|$SERVER_UPSTREAM|g" \
   "$SCRIPT_DIR/templates/nginx.conf" > /etc/nginx/sites-available/myhealth
 ln -sfn /etc/nginx/sites-available/myhealth /etc/nginx/sites-enabled/myhealth
 rm -f /etc/nginx/sites-enabled/default
@@ -99,4 +113,4 @@ systemctl reload nginx.service
 
 "$SCRIPT_DIR/install-tools.sh"
 echo "MyHealth $VERSION установлен: https://$PUBLIC_HOST:$HTTPS_PORT"
-echo "Теперь выпустите клиентский сертификат: sudo $SCRIPT_DIR/generate-client-cert.sh \"Имя пользователя\""
+echo 'Теперь выпустите клиентский сертификат: sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh "Имя пользователя"'

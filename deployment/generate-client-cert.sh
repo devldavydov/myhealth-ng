@@ -7,15 +7,15 @@ if (( EUID != 0 )); then
 fi
 
 USERNAME=${1:-}
-REQUESTED_GUID=${2:-}
+REQUESTED_UUID=${2:-}
 OUTPUT_ROOT=${3:-$PWD/client-certificates}
 if [[ -z $USERNAME || ${#USERNAME} -gt 64 || $USERNAME =~ [[:cntrl:]] ]]; then
-  echo "Использование: sudo $0 <имя-пользователя> [guid] [каталог-результата]" >&2
+  echo "Использование: sudo $0 <имя-пользователя> [uuid] [каталог-результата]" >&2
   echo "Имя должно содержать от 1 до 64 символов без управляющих символов" >&2
   exit 1
 fi
-if [[ -n $REQUESTED_GUID && ! $REQUESTED_GUID =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]]; then
-  echo "Некорректный GUID. Ожидается стандартный UUID" >&2
+if [[ -n $REQUESTED_UUID && ! $REQUESTED_UUID =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]]; then
+  echo "Некорректный UUID. Ожидается стандартный UUID" >&2
   exit 1
 fi
 
@@ -25,11 +25,19 @@ PKI_DIR=/etc/myhealth/pki
   exit 1
 }
 
-GUID=${REQUESTED_GUID:-$(< /proc/sys/kernel/random/uuid)}
-GUID=${GUID,,}
-OUTPUT_DIR=$OUTPUT_ROOT/$GUID
+UUID=${REQUESTED_UUID:-$(< /proc/sys/kernel/random/uuid)}
+UUID=${UUID,,}
+DIRECTORY_USERNAME=${USERNAME// /_}
+DIRECTORY_USERNAME=${DIRECTORY_USERNAME//\//_}
+OUTPUT_DIR=$OUTPUT_ROOT/${UUID}_${DIRECTORY_USERNAME}
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf -- "$WORK_DIR"' EXIT
+if [[ ! -d $OUTPUT_ROOT ]]; then
+  install -d -m 0755 "$OUTPUT_ROOT"
+  if [[ -n ${SUDO_USER:-} && $SUDO_USER != root ]]; then
+    chown "$SUDO_USER" "$OUTPUT_ROOT"
+  fi
+fi
 umask 077
 mkdir -p "$OUTPUT_DIR"/{linux,windows,ios,android}
 
@@ -42,14 +50,14 @@ cat > "$WORK_DIR/client.ext" <<EOF
 basicConstraints=critical,CA:FALSE
 keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=clientAuth
-subjectAltName=URI:urn:myhealth:user:$GUID
+subjectAltName=URI:urn:myhealth:user:$UUID
 subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid,issuer
 EOF
 
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$WORK_DIR/client.key"
 openssl req -new -sha256 -utf8 -key "$WORK_DIR/client.key" \
-  -out "$WORK_DIR/client.csr" -subj "/CN=$SUBJECT_NAME/UID=$GUID"
+  -out "$WORK_DIR/client.csr" -subj "/CN=$SUBJECT_NAME/UID=$UUID"
 openssl x509 -req -sha256 -days 397 -in "$WORK_DIR/client.csr" \
   -CA "$PKI_DIR/ca.crt" -CAkey "$PKI_DIR/ca.key" -CAcreateserial \
   -extfile "$WORK_DIR/client.ext" -out "$WORK_DIR/client.crt"
@@ -80,7 +88,7 @@ done
 
 cat > "$OUTPUT_DIR/metadata.txt" <<EOF
 name=$USERNAME
-guid=$GUID
+uuid=$UUID
 issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 certificate_sha256=$(openssl x509 -in "$WORK_DIR/client.crt" -noout -fingerprint -sha256 | cut -d= -f2)
 EOF
@@ -112,5 +120,5 @@ fi
 
 echo "Сертификат создан"
 echo "Пользователь: $USERNAME"
-echo "GUID: $GUID"
+echo "UUID: $UUID"
 echo "Каталог: $OUTPUT_DIR"
