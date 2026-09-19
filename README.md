@@ -21,15 +21,6 @@ backend и Vite запускает локально через `go run` и `npm 
 удаляет PostgreSQL container и volume. Загруженный образ PostgreSQL остаётся в
 cache.
 
-<!-- LEGACY IMPORT START: remove this paragraph after migration. -->
-Перед запуском backend временный импортер наполняет базу локальными CSV из
-`legacy_data`, если они есть. Сами выгрузки игнорируются Git и не входят в
-репозиторий; без них приложение запускается с пустой базой. Импортер
-поддерживает независимые загрузчики для нескольких разделов; инструкция по
-расширению и последующему удалению находится в
-[`legacy_data/README.md`](legacy_data/README.md).
-<!-- LEGACY IMPORT END -->
-
 Для запуска только PostgreSQL используйте:
 
 ```bash

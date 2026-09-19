@@ -62,19 +62,6 @@ echo "Запускаю PostgreSQL..."
 COMPOSE_TOUCHED=true
 docker compose up -d --wait postgres
 
-# LEGACY IMPORT: delete this block together with cmd/legacy-import,
-# internal/legacyimport and legacy_data after the transition is complete.
-if compgen -G "$SCRIPT_DIR/legacy_data/*.csv" >/dev/null; then
-  echo "Загружаю локальные legacy-данные..."
-  go run ./cmd/legacy-import \
-    --database-url "$DATABASE_URL" \
-    --data-dir "$SCRIPT_DIR/legacy_data" \
-    --user-id '00000000-0000-4000-8000-000000000000'
-else
-  echo "Локальные legacy-выгрузки не найдены, импорт пропущен."
-fi
-# END LEGACY IMPORT
-
 echo "Запускаю backend локально..."
 setsid go run ./cmd/server \
   --database-url "$DATABASE_URL" &

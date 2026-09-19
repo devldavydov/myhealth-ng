@@ -10,4 +10,3 @@ client/vite.config.d.ts
 .DS_Store
 *.log
 TASK.md
-legacy_data/*.csv
