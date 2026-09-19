@@ -1,8 +1,8 @@
 import "./user-badge.css";
 import "./sport.css";
 import "./sport-tabs.css";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
 import { SportFormPage } from "./pages/SportPage";
@@ -28,10 +28,36 @@ const sections = [
 
 export function App() {
   const [userName, setUserName] = useState("Пользователь");
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const navigationRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const currentSection = location.pathname === "/settings"
+    ? "Настройки"
+    : sections.find((section) => location.pathname === section.path || location.pathname.startsWith(section.path + "/"))?.label ?? "Журнал";
 
   useEffect(() => {
     void getCurrentUser().then((user) => user?.name && setUserName(user.name)).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    setNavigationOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!navigationOpen) return;
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Node && !navigationRef.current?.contains(event.target)) setNavigationOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setNavigationOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [navigationOpen]);
 
   return (
     <div className="app-shell">
@@ -39,11 +65,24 @@ export function App() {
         <NavLink className="brand" to="/">
           <span className="brand-mark">M+</span><span>MyHealth</span>
         </NavLink>
-        <nav aria-label="Основная навигация">
-          {sections.map((section) => (
-            <NavLink key={section.path} to={section.path}>{section.label}</NavLink>
-          ))}
-        </nav>
+        <div className={`main-navigation ${navigationOpen ? "is-open" : ""}`} ref={navigationRef}>
+          <button
+            aria-controls="primary-navigation"
+            aria-expanded={navigationOpen}
+            aria-label="Выбрать раздел"
+            className="mobile-nav-toggle"
+            onClick={() => setNavigationOpen((open) => !open)}
+            type="button"
+          >
+            <span>{currentSection}</span>
+            <span aria-hidden="true" className="mobile-nav-chevron">⌄</span>
+          </button>
+          <nav aria-label="Основная навигация" id="primary-navigation">
+            {sections.map((section) => (
+              <NavLink key={section.path} onClick={() => setNavigationOpen(false)} to={section.path}>{section.label}</NavLink>
+            ))}
+          </nav>
+        </div>
         <Link className="user-badge" to="/settings" aria-label={`Настройки пользователя: ${userName}`} title="Открыть настройки пользователя">
           <span aria-hidden="true">{userName.slice(0, 1).toUpperCase()}</span>
           <strong>{userName}</strong>
@@ -52,6 +91,7 @@ export function App() {
       <main>
         <Routes>
           <Route path="/food" element={<FoodPage />} />
+          <Route path="/" element={<Navigate replace to="/journal" />} />
           <Route path="/journal" element={(
             <Suspense fallback={<div className="page"><p className="muted">Загрузка журнала…</p></div>}>
               <JournalPage />

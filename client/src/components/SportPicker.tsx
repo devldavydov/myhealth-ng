@@ -41,8 +41,9 @@ export function SportPicker({ disabled, onError, onSelect, value }: Props) {
     isDisabled={disabled}
     loadingMessage={() => "Ищем…"}
     loadOptions={loadOptions}
+    menuPlacement="bottom"
     menuPortalTarget={document.body}
-    menuPosition="fixed"
+    menuPosition="absolute"
     noOptionsMessage={() => "Ничего не найдено"}
     onChange={(option) => { if (option) onSelect(option.sport); }}
     placeholder="Начните вводить название"

@@ -10,5 +10,5 @@ it("рендерит выпадающее меню вне обрезающего
  vi.stubGlobal("fetch",vi.fn().mockImplementation(async(input:string)=>input.startsWith("/api/food?")?response({data:[food],pagination:{page:1,pageSize:50,total:1,totalPages:1}}):response({data:[],pagination:{page:1,pageSize:50,total:0,totalPages:0}})));
  render(<div data-testid="clipping-zone" style={{overflow:"hidden"}}><FoodBundlePicker onError={()=>undefined} onSelect={()=>undefined}/></div>);
  const picker=screen.getByRole("combobox",{name:"Поиск еды или бандла"});fireEvent.focus(picker);fireEvent.change(picker,{target:{value:"Твор"}});await screen.findByText("Творог");
- const portal=document.querySelector<HTMLElement>(".bundle-select__menu-portal");expect(portal).not.toBeNull();expect(portal?.parentElement).toBe(document.body);expect(screen.getByTestId("clipping-zone")).not.toContainElement(portal);
+ const portal=document.querySelector<HTMLElement>(".bundle-select__menu-portal");expect(portal).not.toBeNull();expect(portal?.parentElement).toBe(document.body);expect(portal).toHaveStyle({position:"absolute"});expect(screen.getByTestId("clipping-zone")).not.toContainElement(portal);
 });

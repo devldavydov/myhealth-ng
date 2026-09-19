@@ -86,19 +86,54 @@ describe("MyHealth SPA", () => {
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
-  it("перенаправляет на список продуктов и показывает пользователя", async () => {
+  it("перенаправляет с корневого адреса в журнал текущего дня", async () => {
+    const today = (() => {
+      const value = new Date();
+      const year = String(value.getFullYear()).padStart(4, "0");
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })();
+    const fetchMock = vi.fn().mockImplementation(async (input: string) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
+      if (input === `/api/active-calories?dt=${today}`) return response({ data: null });
+      if (input === `/api/journal?dt=${today}`) return response({ data: { ...journalDay(false), dt: today } });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/"]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Журнал" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Дата журнала")).toHaveValue(today);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/journal?dt=${today}`, undefined);
+    expect(screen.getByRole("link", { name: "Еда" })).toHaveAttribute("href", "/food");
+    expect(screen.getByRole("link", { name: "Вес" })).toHaveAttribute("href", "/weight");
+    expect(await screen.findByText("Анна")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Настройки пользователя: Анна" })).toHaveAttribute("href", "/settings");
+  });
+
+  it("раскрывает и закрывает меню разделов", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: string) =>
       input === "/api/me" ? response({ data: user }) : response({ data: [] })
     ));
-    render(<MemoryRouter initialEntries={["/"]}><App /></MemoryRouter>);
+    render(<MemoryRouter initialEntries={["/food"]}><App /></MemoryRouter>);
 
-    expect(await screen.findByRole("heading", { name: "Продукты" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Еда" })).toHaveAttribute("href", "/food");
-    expect(screen.getByRole("link", { name: "Вес" })).toHaveAttribute("href", "/weight");
-    expect(screen.getByRole("link", { name: "Добавить продукт" })).toHaveAttribute("href", "/food/new");
-    expect(await screen.findByText("Анна")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Настройки пользователя: Анна" })).toHaveAttribute("href", "/settings");
-    expect(await screen.findByText("Продуктов пока нет. Добавьте первый.")).toBeInTheDocument();
+    const toggle = screen.getByLabelText("Выбрать раздел");
+    expect(toggle).toHaveTextContent("Еда");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    fireEvent.pointerDown(document.body);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("link", { name: "Вес" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("показывает пустые настройки и сохраняет числовой лимит", async () => {
