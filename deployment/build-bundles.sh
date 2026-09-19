@@ -18,10 +18,15 @@ if [[ $OUTPUT_ARCHIVE != *.tar.gz ]]; then
   echo "Выходной файл должен иметь расширение .tar.gz" >&2
   exit 1
 fi
+ARCHIVE_DIR_NAME=$(basename -- "$OUTPUT_ARCHIVE" .tar.gz)
+if [[ -z $ARCHIVE_DIR_NAME ]]; then
+  echo "Имя архива без расширения не должно быть пустым" >&2
+  exit 1
+fi
 
 BUILD_DIR=$(mktemp -d)
 trap 'rm -rf -- "$BUILD_DIR"' EXIT
-PACKAGE_DIR=$BUILD_DIR/package
+PACKAGE_DIR=$BUILD_DIR/$ARCHIVE_DIR_NAME
 
 cd "$PROJECT_DIR"
 go test ./...
@@ -67,6 +72,6 @@ tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
 
 mkdir -p "$(dirname -- "$OUTPUT_ARCHIVE")"
 tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-  -czf "$OUTPUT_ARCHIVE" -C "$PACKAGE_DIR" .
+  -czf "$OUTPUT_ARCHIVE" -C "$BUILD_DIR" -- "$ARCHIVE_DIR_NAME"
 
 echo "Релиз версии $VERSION создан: $OUTPUT_ARCHIVE"

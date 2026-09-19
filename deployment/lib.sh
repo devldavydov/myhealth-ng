@@ -46,6 +46,7 @@ require_root() {
 prepare_bundle_input() {
   local input=$1
   local resolved_input
+  local -a bundle_entries=()
 
   [[ -n $input ]] || { echo "Не указан архив с релизом" >&2; exit 1; }
   resolved_input=$(realpath "$input")
@@ -60,7 +61,25 @@ prepare_bundle_input() {
 
   BUNDLE_TEMP_DIR=$(mktemp -d /tmp/myhealth-bundles.XXXXXX)
   tar -xzf "$resolved_input" -C "$BUNDLE_TEMP_DIR" --no-same-owner
-  BUNDLE_DIR=$BUNDLE_TEMP_DIR
+  if [[ -f $BUNDLE_TEMP_DIR/release-version ]]; then
+    BUNDLE_DIR=$BUNDLE_TEMP_DIR
+    return
+  fi
+
+  mapfile -d '' -t bundle_entries < <(
+    find "$BUNDLE_TEMP_DIR" -mindepth 1 -maxdepth 1 -print0
+  )
+  if (( ${#bundle_entries[@]} == 1 )) &&
+      [[ -d ${bundle_entries[0]} && ! -L ${bundle_entries[0]} ]]; then
+    BUNDLE_DIR=${bundle_entries[0]}
+    return
+  fi
+
+  echo "Архив должен содержать один корневой каталог релиза" >&2
+  rm -rf -- "$BUNDLE_TEMP_DIR"
+  BUNDLE_TEMP_DIR=
+  BUNDLE_DIR=
+  exit 1
 }
 
 cleanup_bundle_input() {

@@ -51,6 +51,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .main-navigation { justify-self: center; }
 .main-navigation nav { display: flex; gap: 8px; }
 .main-navigation nav a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   padding: 10px 15px;
   border-radius: 10px;
   color: #657975;
@@ -59,6 +62,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   text-decoration: none;
 }
 .main-navigation nav a.active { color: #126b64; background: #e7f3ef; }
+.navigation-icon { display: none; flex: 0 0 auto; }
 .mobile-nav-toggle { display: none; }
 .topbar .user-badge { justify-self: end; }
 
@@ -542,7 +546,8 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
     font-weight: 800;
     cursor: pointer;
   }
-  .mobile-nav-chevron { font-size: 17px; line-height: 1; transition: transform .16s ease; }
+  .navigation-icon { display: block; }
+  .mobile-nav-chevron { flex: 0 0 auto; transition: transform .16s ease; }
   .main-navigation.is-open .mobile-nav-chevron { transform: rotate(180deg); }
   .main-navigation nav {
     position: absolute;

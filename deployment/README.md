@@ -15,12 +15,13 @@ frontend и скриптов установки. PostgreSQL запускаетс
 Скрипт запускает backend/frontend-тесты, собирает frontend и статический
 Linux-бинарник. Результат — транспортный архив
 `artifacts/myhealth-1.0.0.tar.gz` с frontend/backend-бандлами, deploy-скриптами,
-версией и SHA-256-манифестом. На сервер переносится только этот архив; Go и
+версией и SHA-256-манифестом. Все файлы внутри находятся в каталоге
+`myhealth-1.0.0`, то есть в каталоге с именем архива без `.tar.gz`. На сервер
+переносится только этот архив; Go и
 Node.js на сервере не нужны. Deployment-скрипты не копируются в системные
 каталоги: запускайте их непосредственно из распакованного архива релиза.
-Примеры ниже предполагают, что архив версии `1.0.0` распакован в каталог
-`myhealth-release-1.0.0`; этот каталог можно сохранить или создать заново из
-архива перед обслуживанием.
+Примеры ниже используют создаваемый при распаковке каталог `myhealth-1.0.0`;
+его можно сохранить или создать заново из архива перед обслуживанием.
 
 По умолчанию бинарник собирается для архитектуры машины сборки. Для другой
 архитектуры Linux задайте `MYHEALTH_GOARCH`, например:
@@ -42,9 +43,8 @@ MYHEALTH_GOARCH=arm64 ./deployment/build-bundles.sh 1.0.0
 установщик из извлечённого каталога:
 
 ```bash
-mkdir myhealth-release-1.0.0
-tar -xzf myhealth-1.0.0.tar.gz -C myhealth-release-1.0.0
-sudo ./myhealth-release-1.0.0/deployment/install-server.sh ./myhealth-1.0.0.tar.gz \
+tar -xzf myhealth-1.0.0.tar.gz
+sudo ./myhealth-1.0.0/deployment/install-server.sh ./myhealth-1.0.0.tar.gz \
   --public-host 111.88.251.114 \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 ```
@@ -76,10 +76,10 @@ Systemd drop-in доступен только root, однако database URL в
 
 ```bash
 # Новый пользователь: UUID создаётся автоматически
-sudo ./myhealth-release-1.0.0/deployment/generate-client-cert.sh "Иван Иванов"
+sudo ./myhealth-1.0.0/deployment/generate-client-cert.sh "Иван Иванов"
 
 # Перевыпуск для той же учётной записи с сохранением UUID
-sudo ./myhealth-release-1.0.0/deployment/generate-client-cert.sh \
+sudo ./myhealth-1.0.0/deployment/generate-client-cert.sh \
   "Иван Иванов" 3f67c05f-7c9e-4cb5-b26a-f9ce5b065865
 ```
 
@@ -108,7 +108,7 @@ PKCS#12. Корневой сертификат нужно добавить в д
 в имени:
 
 ```bash
-sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
+sudo ./myhealth-1.0.0/deployment/backup-database.sh \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 # /var/backups/myhealth/myhealth-YYYYmmddTHHMMSSZ.dump
 ```
@@ -116,7 +116,7 @@ sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
 Можно указать другой путь:
 
 ```bash
-sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
+sudo ./myhealth-1.0.0/deployment/backup-database.sh \
   /secure/backups/myhealth-before-upgrade.dump \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 ```
@@ -130,7 +130,7 @@ sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
 возвращает сервис в исходное состояние:
 
 ```bash
-sudo ./myhealth-release-1.0.0/deployment/restore-database.sh \
+sudo ./myhealth-1.0.0/deployment/restore-database.sh \
   /var/backups/myhealth/myhealth-YYYYmmddTHHMMSSZ.dump \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 ```
@@ -145,9 +145,8 @@ sudo ./myhealth-release-1.0.0/deployment/restore-database.sh \
 находящийся в нём upgrade-скрипт:
 
 ```bash
-mkdir myhealth-upgrade-1.1.0
-tar -xzf myhealth-1.1.0.tar.gz -C myhealth-upgrade-1.1.0
-sudo ./myhealth-upgrade-1.1.0/deployment/upgrade-server.sh \
+tar -xzf myhealth-1.1.0.tar.gz
+sudo ./myhealth-1.1.0/deployment/upgrade-server.sh \
   ./myhealth-1.1.0.tar.gz
 ```
 
@@ -160,7 +159,7 @@ PostgreSQL и существующий systemd drop-in сохраняются.
 подключения и нужные адрес/порт вместе:
 
 ```bash
-sudo ./myhealth-upgrade-1.1.0/deployment/upgrade-server.sh \
+sudo ./myhealth-1.1.0/deployment/upgrade-server.sh \
   ./myhealth-1.1.0.tar.gz \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth' \
   --server-host 127.0.0.1 \
@@ -175,7 +174,7 @@ Deployment-скрипты в систему не устанавливаются.
 ## 6. Удаление
 
 ```bash
-sudo ./myhealth-release-1.1.0/deployment/uninstall-server.sh
+sudo ./myhealth-1.1.0/deployment/uninstall-server.sh
 ```
 
 Используйте `uninstall-server.sh` из распакованного архива установленной

@@ -2,6 +2,7 @@ import "./user-badge.css";
 import "./sport.css";
 import "./sport-tabs.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Activity, Apple, BookOpenText, ChevronDown, Dumbbell, PackageOpen, Scale, Settings } from "lucide-react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
@@ -18,13 +19,15 @@ const SettingsPage = lazy(() => import("./pages/SettingsPage").then((module) => 
 const JournalPage = lazy(() => import("./pages/JournalPage").then((module) => ({ default: module.JournalPage })));
 
 const sections = [
-  { path: "/journal", label: "Журнал" },
-  { path: "/food", label: "Еда" },
-  { path: "/bundle", label: "Бандлы" },
-  { path: "/weight", label: "Вес" },
-  { path: "/sport", label: "Спорт" },
-  { path: "/sport-activity", label: "Активность" }
+  { path: "/journal", label: "Журнал", icon: BookOpenText },
+  { path: "/food", label: "Еда", icon: Apple },
+  { path: "/bundle", label: "Бандлы", icon: PackageOpen },
+  { path: "/weight", label: "Вес", icon: Scale },
+  { path: "/sport", label: "Спорт", icon: Dumbbell },
+  { path: "/sport-activity", label: "Активность", icon: Activity }
 ];
+
+const settingsSection = { label: "Настройки", icon: Settings };
 
 export function App() {
   const [userName, setUserName] = useState("Пользователь");
@@ -32,8 +35,9 @@ export function App() {
   const navigationRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const currentSection = location.pathname === "/settings"
-    ? "Настройки"
-    : sections.find((section) => location.pathname === section.path || location.pathname.startsWith(section.path + "/"))?.label ?? "Журнал";
+    ? settingsSection
+    : sections.find((section) => location.pathname === section.path || location.pathname.startsWith(section.path + "/")) ?? sections[0];
+  const CurrentSectionIcon = currentSection.icon;
 
   useEffect(() => {
     void getCurrentUser().then((user) => user?.name && setUserName(user.name)).catch(() => undefined);
@@ -74,12 +78,16 @@ export function App() {
             onClick={() => setNavigationOpen((open) => !open)}
             type="button"
           >
-            <span>{currentSection}</span>
-            <span aria-hidden="true" className="mobile-nav-chevron">⌄</span>
+            <CurrentSectionIcon aria-hidden="true" className="navigation-icon" size={18} strokeWidth={2.2} />
+            <span>{currentSection.label}</span>
+            <ChevronDown aria-hidden="true" className="mobile-nav-chevron" size={18} strokeWidth={2.2} />
           </button>
           <nav aria-label="Основная навигация" id="primary-navigation">
-            {sections.map((section) => (
-              <NavLink key={section.path} onClick={() => setNavigationOpen(false)} to={section.path}>{section.label}</NavLink>
+            {sections.map(({ path, label, icon: Icon }) => (
+              <NavLink key={path} onClick={() => setNavigationOpen(false)} to={path}>
+                <Icon aria-hidden="true" className="navigation-icon" size={18} strokeWidth={2.2} />
+                <span>{label}</span>
+              </NavLink>
             ))}
           </nav>
         </div>

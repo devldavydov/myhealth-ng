@@ -121,6 +121,9 @@ describe("MyHealth SPA", () => {
 
     const toggle = screen.getByLabelText("Выбрать раздел");
     expect(toggle).toHaveTextContent("Еда");
+    expect(toggle.querySelector("svg.navigation-icon")).toBeInTheDocument();
+    expect(toggle.querySelector("svg.mobile-nav-chevron")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Вес" }).querySelector("svg.navigation-icon")).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
