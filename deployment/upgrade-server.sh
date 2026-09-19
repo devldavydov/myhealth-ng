@@ -103,7 +103,6 @@ if ! systemctl restart myhealth.service; then
   systemctl restart myhealth.service || true
   exit 1
 fi
-
 NGINX_SITE=/etc/nginx/sites-available/myhealth
 if [[ -n $DATABASE_URL && -f $NGINX_SITE ]]; then
   NGINX_SERVER_HOST=$SERVER_HOST
@@ -122,8 +121,3 @@ fi
 nginx -t
 systemctl reload nginx.service
 echo "MyHealth обновлён до версии $VERSION"
-if [[ -x $BUNDLE_DIR/deployment/install-tools.sh ]]; then
-  "$BUNDLE_DIR/deployment/install-tools.sh"
-elif [[ -x $SCRIPT_DIR/install-tools.sh ]]; then
-  "$SCRIPT_DIR/install-tools.sh"
-fi

@@ -111,6 +111,5 @@ nginx -t
 systemctl enable --now nginx.service
 systemctl reload nginx.service
 
-"$SCRIPT_DIR/install-tools.sh"
 echo "MyHealth $VERSION установлен: https://$PUBLIC_HOST:$HTTPS_PORT"
-echo 'Теперь выпустите клиентский сертификат: sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh "Имя пользователя"'
+echo "Теперь выпустите клиентский сертификат: sudo $SCRIPT_DIR/generate-client-cert.sh \"Имя пользователя\""

@@ -44,8 +44,9 @@ CGO_ENABLED=0 GOOS=$TARGET_GOOS GOARCH=$TARGET_GOARCH go -C "$PROJECT_DIR" build
 printf '%s/%s\n' "$TARGET_GOOS" "$TARGET_GOARCH" > "$BUILD_DIR/backend/PLATFORM"
 
 cp "$SCRIPT_DIR/install-server.sh" "$SCRIPT_DIR/upgrade-server.sh" \
-  "$SCRIPT_DIR/generate-client-cert.sh" "$SCRIPT_DIR/uninstall-server.sh" \
-  "$SCRIPT_DIR/install-tools.sh" "$SCRIPT_DIR/lib.sh" "$PACKAGE_DIR/deployment/"
+  "$SCRIPT_DIR/generate-client-cert.sh" "$SCRIPT_DIR/backup-database.sh" \
+  "$SCRIPT_DIR/restore-database.sh" "$SCRIPT_DIR/uninstall-server.sh" \
+  "$SCRIPT_DIR/lib.sh" "$PACKAGE_DIR/deployment/"
 cp "$SCRIPT_DIR/templates/nginx.conf" "$PACKAGE_DIR/deployment/templates/"
 cp "$SCRIPT_DIR/templates/myhealth.service" "$PACKAGE_DIR/deployment/templates/"
 cp "$SCRIPT_DIR/README.md" "$PACKAGE_DIR/deployment/"

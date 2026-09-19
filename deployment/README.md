@@ -16,7 +16,11 @@ frontend и скриптов установки. PostgreSQL запускаетс
 Linux-бинарник. Результат — транспортный архив
 `artifacts/myhealth-1.0.0.tar.gz` с frontend/backend-бандлами, deploy-скриптами,
 версией и SHA-256-манифестом. На сервер переносится только этот архив; Go и
-Node.js на сервере не нужны.
+Node.js на сервере не нужны. Deployment-скрипты не копируются в системные
+каталоги: запускайте их непосредственно из распакованного архива релиза.
+Примеры ниже предполагают, что архив версии `1.0.0` распакован в каталог
+`myhealth-release-1.0.0`; этот каталог можно сохранить или создать заново из
+архива перед обслуживанием.
 
 По умолчанию бинарник собирается для архитектуры машины сборки. Для другой
 архитектуры Linux задайте `MYHEALTH_GOARCH`, например:
@@ -38,9 +42,9 @@ MYHEALTH_GOARCH=arm64 ./deployment/build-bundles.sh 1.0.0
 установщик из извлечённого каталога:
 
 ```bash
-mkdir myhealth-installer
-tar -xzf myhealth-1.0.0.tar.gz -C myhealth-installer
-sudo ./myhealth-installer/deployment/install-server.sh ./myhealth-1.0.0.tar.gz \
+mkdir myhealth-release-1.0.0
+tar -xzf myhealth-1.0.0.tar.gz -C myhealth-release-1.0.0
+sudo ./myhealth-release-1.0.0/deployment/install-server.sh ./myhealth-1.0.0.tar.gz \
   --public-host 111.88.251.114 \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
 ```
@@ -64,7 +68,6 @@ Nginx раздаёт frontend, проксирует `/api/` в Go-сервис �
 - `/etc/myhealth/pki` — CA и серверные ключи;
 - `/etc/systemd/system/myhealth.service.d/10-config.conf` — параметры Go API;
 - `/var/lib/myhealth` — рабочий каталог системного пользователя;
-- `/usr/local/lib/myhealth-deployment` — установленные deploy-инструменты.
 
 Systemd drop-in доступен только root, однако database URL виден в аргументах
 процесса. Это ограничение текущей схемы конфигурации.
@@ -73,10 +76,10 @@ Systemd drop-in доступен только root, однако database URL в
 
 ```bash
 # Новый пользователь: UUID создаётся автоматически
-sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh "Иван Иванов"
+sudo ./myhealth-release-1.0.0/deployment/generate-client-cert.sh "Иван Иванов"
 
 # Перевыпуск для той же учётной записи с сохранением UUID
-sudo /usr/local/lib/myhealth-deployment/generate-client-cert.sh \
+sudo ./myhealth-release-1.0.0/deployment/generate-client-cert.sh \
   "Иван Иванов" 3f67c05f-7c9e-4cb5-b26a-f9ce5b065865
 ```
 
@@ -93,11 +96,59 @@ PKCS#12. Корневой сертификат нужно добавить в д
 пользовательский комплект следует передавать только по защищённому каналу.
 Без валидного клиентского сертификата Nginx отвечает HTTP 403.
 
-## 4. Обновление
+## 4. Backup и восстановление PostgreSQL
+
+Для запуска скриптов на машине должны быть установлены `pg_dump` и
+`pg_restore`; их major-версия должна совпадать с версией PostgreSQL-сервера или
+быть новее. Установщик приложения эти утилиты не устанавливает.
+
+Полный логический backup базы приложения создаётся в PostgreSQL custom format.
+Он включает схему, данные и large objects, проверяется через `pg_restore` и
+получает соседний SHA-256-файл. По умолчанию результат сохраняется с UTC-временем
+в имени:
 
 ```bash
-sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh \
-  /path/to/myhealth-1.1.0.tar.gz
+sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
+  --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
+# /var/backups/myhealth/myhealth-YYYYmmddTHHMMSSZ.dump
+```
+
+Можно указать другой путь:
+
+```bash
+sudo ./myhealth-release-1.0.0/deployment/backup-database.sh \
+  /secure/backups/myhealth-before-upgrade.dump \
+  --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
+```
+
+Строка подключения всегда передаётся явно через `--database-url`. Backup
+получает согласованный снимок без остановки API.
+Роли и tablespaces всего PostgreSQL-кластера в backup одной базы не входят.
+
+Восстановление проверяет SHA-256 и структуру архива, останавливает активный
+`myhealth.service`, заменяет сохранённые объекты в одной транзакции и затем
+возвращает сервис в исходное состояние:
+
+```bash
+sudo ./myhealth-release-1.0.0/deployment/restore-database.sh \
+  /var/backups/myhealth/myhealth-YYYYmmddTHHMMSSZ.dump \
+  --database-url 'postgresql://myhealth:password@db.example.com/myhealth'
+```
+
+Операция требует ввести `RESTORE`. Для автоматизированного запуска доступен
+`--yes`. Файлы в `/var/backups/myhealth` имеют права только для root и при
+удалении MyHealth сохраняются.
+
+## 5. Обновление
+
+Сначала извлеките deployment-скрипты именно из нового архива, затем запустите
+находящийся в нём upgrade-скрипт:
+
+```bash
+mkdir myhealth-upgrade-1.1.0
+tar -xzf myhealth-1.1.0.tar.gz -C myhealth-upgrade-1.1.0
+sudo ./myhealth-upgrade-1.1.0/deployment/upgrade-server.sh \
+  ./myhealth-1.1.0.tar.gz
 ```
 
 Архив и контрольные суммы проверяются до установки. Релиз размещается в новом
@@ -109,24 +160,26 @@ PostgreSQL и существующий systemd drop-in сохраняются.
 подключения и нужные адрес/порт вместе:
 
 ```bash
-sudo /usr/local/lib/myhealth-deployment/upgrade-server.sh \
-  /path/to/myhealth-1.1.0.tar.gz \
+sudo ./myhealth-upgrade-1.1.0/deployment/upgrade-server.sh \
+  ./myhealth-1.1.0.tar.gz \
   --database-url 'postgresql://myhealth:password@db.example.com/myhealth' \
   --server-host 127.0.0.1 \
   --server-port 3000
 ```
 
-Если systemd drop-in отсутствует, `--database-url` обязателен. После успешного
-обновления deploy-инструменты в `/usr/local/lib/myhealth-deployment` также
-заменяются версией из нового релиза.
+Если systemd drop-in отсутствует, `--database-url` обязателен. После
+обновления старый распакованный каталог можно удалить, а новый сохранить
+для обслуживания этой версии либо при необходимости снова получить из архива.
+Deployment-скрипты в систему не устанавливаются.
 
-## 5. Удаление
+## 6. Удаление
 
 ```bash
-sudo /usr/local/lib/myhealth-deployment/uninstall-server.sh
+sudo ./myhealth-release-1.1.0/deployment/uninstall-server.sh
 ```
 
-Скрипт требует ввести `DELETE`; `--yes` отключает подтверждение. Опция
+Используйте `uninstall-server.sh` из распакованного архива установленной
+версии. Скрипт требует ввести `DELETE`; `--yes` отключает подтверждение. Опция
 `--keep-pki` сохраняет `/etc/myhealth/pki`, чтобы ранее выпущенные клиентские
 сертификаты продолжили работать после переустановки. PostgreSQL, Nginx и
 OpenSSL не удаляются. Пользовательские комплекты сертификатов, созданные вне

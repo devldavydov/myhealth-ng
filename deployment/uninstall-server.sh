@@ -45,20 +45,13 @@ if command -v nginx >/dev/null 2>&1 && nginx -t; then
 fi
 
 rm -rf -- /opt/myhealth /var/lib/myhealth
-if [[ $KEEP_PKI == true ]]; then
-  rm -f /etc/myhealth/myhealth.env
-else
+if [[ $KEEP_PKI != true ]]; then
   rm -rf -- /etc/myhealth
 fi
 
 if id myhealth >/dev/null 2>&1; then
   userdel myhealth
 fi
-
-rm -f /usr/local/sbin/myhealth-upgrade \
-  /usr/local/sbin/myhealth-generate-client-cert \
-  /usr/local/sbin/myhealth-uninstall
-rm -rf -- /usr/local/lib/myhealth-deployment
 
 echo "MyHealth удалён. Пакеты Nginx и OpenSSL оставлены, поскольку они могут использоваться другими приложениями."
 if [[ $KEEP_PKI == true ]]; then
