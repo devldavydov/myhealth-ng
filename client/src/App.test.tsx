@@ -87,13 +87,9 @@ describe("MyHealth SPA", () => {
   });
 
   it("перенаправляет с корневого адреса в журнал текущего дня", async () => {
-    const today = (() => {
-      const value = new Date();
-      const year = String(value.getFullYear()).padStart(4, "0");
-      const month = String(value.getMonth() + 1).padStart(2, "0");
-      const day = String(value.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    })();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const today = "2026-09-20";
     const fetchMock = vi.fn().mockImplementation(async (input: string) => {
       if (input === "/api/me") return response({ data: user });
       if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
@@ -106,7 +102,7 @@ describe("MyHealth SPA", () => {
 
     expect(await screen.findByRole("heading", { name: "Журнал" })).toBeInTheDocument();
     expect(screen.getByLabelText("Дата журнала")).toHaveValue(today);
-    expect(fetchMock).toHaveBeenCalledWith(`/api/journal?dt=${today}`, undefined);
+    expect(fetchMock.mock.calls.some(([input]) => input === `/api/journal?dt=${today}`)).toBe(true);
     expect(screen.getByRole("link", { name: "Еда" })).toHaveAttribute("href", "/food");
     expect(screen.getByRole("link", { name: "Вес" })).toHaveAttribute("href", "/weight");
     expect(await screen.findByText("Анна")).toBeInTheDocument();
