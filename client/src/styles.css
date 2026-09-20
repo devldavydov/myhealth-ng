@@ -111,6 +111,7 @@ h2 { margin-bottom: 0; font-size: 31px; letter-spacing: -.035em; }
   box-shadow: 0 14px 44px rgba(34, 67, 61, .07);
 }
 .food-form-card form, .food-form-card label { display: grid; gap: 8px; }
+.food-form-card form, .food-form-card label, .weight-filter-form, .weight-filter-form > * { min-width: 0; max-width: 100%; }
 .food-form-card form { gap: 18px; }
 .food-form-card label, .mode-switch legend {
   color: #536965;
@@ -126,7 +127,29 @@ input, textarea {
   background: #fbfdfc;
   outline: none;
 }
-input[type="date"] { min-width: 0; max-width: 100%; }
+input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+}
+input[type="date"]::-webkit-date-and-time-value { min-width: 0; }
+input[type="date"]::-webkit-datetime-edit { min-width: 0; }
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] {
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+  }
+}
+.date-field {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
 textarea { min-height: 82px; resize: vertical; }
 input:focus, textarea:focus { border-color: #2b9185; box-shadow: 0 0 0 3px #ddf1ed; }
 input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
@@ -464,7 +487,8 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .journal-date-control { display: grid; grid-template-columns: 44px minmax(150px, 190px) 44px auto; gap: 8px; }
 .journal-date-control .button { min-width: 0; padding: 8px; }
 .journal-today-button { padding-inline: 14px !important; }
-.journal-date-control input { min-width: 0; width: 100%; }
+.journal-date-field { min-width: 0; max-width: 100%; }
+.journal-date-field input { min-width: 0; width: 100%; max-width: 100%; }
 .journal-summary {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
@@ -525,6 +549,9 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .journal-item > div strong, .journal-item > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .journal-item > div small { color: #7a8c88; font-size: 10px; }
 .journal-item > span { color: #536965; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.entity-edit-link { color: inherit; text-decoration: none; }
+.entity-edit-link:hover { color: #126f68; text-decoration: underline; text-underline-offset: 3px; }
+.journal-food-link { display: grid; min-width: 0; gap: 2px; }
 
 .journal-item-actions { display: flex !important; grid-auto-flow: column; gap: 6px !important; }
 .icon-button {
@@ -652,6 +679,9 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .weight-panel { padding: 19px 16px; border-radius: 17px; }
   .weight-filter-form, .weight-entry-form { grid-template-columns: 1fr; }
+  .sport-activity-page .weight-filter-form,
+  .sport-activity-form-page .food-form-card form,
+  .sport-activity-form-page .food-form-card label { width: 100%; min-width: 0; max-width: 100%; }
   .weight-filter-form .button, .weight-entry-form .button { width: 100%; }
   .weight-entry-form .form-hint { grid-column: auto; }
   .weight-chart { height: 270px; }
@@ -662,7 +692,10 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .bundle-item-row { grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; }
   .bundle-item-row .text-button { grid-column: 1 / -1; border-top: 1px solid #e2ebe8; }
   .bundle-total { display: grid; gap: 5px; }
-  .journal-date-control { width: 100%; grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .journal-date-control {
+    width: 100%;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
   .journal-today-button { grid-column: 1 / -1; }
   .journal-summary { padding: 18px 16px; border-radius: 18px; }
   .journal-calories strong { font-size: 25px; }

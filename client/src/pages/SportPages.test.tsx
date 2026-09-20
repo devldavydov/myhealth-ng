@@ -49,6 +49,9 @@ it("показывает отсортированный список и итог
   expect(rows[0]).toHaveTextContent("Брусья");
   expect(rows[1]).toHaveTextContent("Турник");
   expect(rows[1]).toHaveTextContent("Итого: 8 шт");
+  const sportLinks = screen.getAllByRole("link", { name: "Редактировать вид спорта Турник" });
+  expect(sportLinks).toHaveLength(2);
+  sportLinks.forEach((link) => expect(link).toHaveAttribute("href", "/sport/b/edit"));
   fireEvent.click(screen.getByRole("tab", { name: "Статистика" }));
   const table = screen.getByRole("table");
   const tableRows = within(table).getAllByRole("row");

@@ -331,7 +331,9 @@ export function JournalPage() {
         </div>
         <div className="journal-date-control">
           <button aria-label="Предыдущий день" className="button secondary" onClick={() => chooseDate(shiftDate(selectedDate, -1))} type="button">←</button>
-          <input aria-label="Дата журнала" type="date" value={selectedDate} onChange={(event) => chooseDate(event.target.value)} />
+          <div className="journal-date-field">
+            <input aria-label="Дата журнала" type="date" value={selectedDate} onChange={(event) => chooseDate(event.target.value)} />
+          </div>
           <button aria-label="Следующий день" className="button secondary" onClick={() => chooseDate(shiftDate(selectedDate, 1))} type="button">→</button>
           <button className="button secondary journal-today-button" disabled={selectedDate === today} onClick={() => chooseDate(today)} type="button">Сегодня</button>
         </div>
@@ -443,7 +445,7 @@ export function JournalPage() {
                       </form>
                     ) : (
                       <div className="journal-item" key={item.food.key}>
-                        <div><strong>{item.food.name}</strong><small>{item.food.brand || "Без бренда"}</small></div>
+                        <div><Link aria-label={`Редактировать продукт ${item.food.name}`} className="entity-edit-link journal-food-link" to={`/food/${encodeURIComponent(item.food.key)}/edit`}><strong>{item.food.name}</strong><small>{item.food.brand || "Без бренда"}</small></Link></div>
                         <span>{numberFormat.format(item.weight)} г</span>
                         <span>{numberFormat.format(item.food.cal100 * item.weight / 100)} ккал</span>
                         <div className="journal-item-actions">

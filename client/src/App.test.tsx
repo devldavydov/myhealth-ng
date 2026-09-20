@@ -102,7 +102,9 @@ describe("MyHealth SPA", () => {
 
     expect(await screen.findByRole("heading", { name: "Журнал" })).toBeInTheDocument();
     expect(screen.getByLabelText("Дата журнала")).toHaveValue(today);
-    expect(fetchMock.mock.calls.some(([input]) => input === `/api/journal?dt=${today}`)).toBe(true);
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => input === `/api/journal?dt=${today}`)).toBe(true);
+    });
     expect(screen.getByRole("link", { name: "Еда" })).toHaveAttribute("href", "/food");
     expect(screen.getByRole("link", { name: "Вес" })).toHaveAttribute("href", "/weight");
     expect(await screen.findByText("Анна")).toBeInTheDocument();
