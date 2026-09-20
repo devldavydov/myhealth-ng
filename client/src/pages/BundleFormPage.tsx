@@ -9,6 +9,7 @@ import {
   type Food
 } from "../api";
 import { FoodBundlePicker, type FoodBundleOption } from "../components/FoodBundlePicker";
+import { formatEditableNumber } from "../numeric";
 
 type FormItem = { food: Food; weight: string };
 
@@ -33,13 +34,13 @@ export function mergeBundleItems(current: FormItem[], added: BundleItem[]): Form
     const existingIndex = indexes.get(item.food.key);
     if (existingIndex === undefined) {
       indexes.set(item.food.key, result.length);
-      result.push({ food: item.food, weight: String(item.weight) });
+      result.push({ food: item.food, weight: formatEditableNumber(item.weight) });
       continue;
     }
     const existing = parseNumber(result[existingIndex].weight);
     result[existingIndex] = {
       ...result[existingIndex],
-      weight: String((Number.isFinite(existing) ? existing : 0) + item.weight)
+      weight: formatEditableNumber((Number.isFinite(existing) ? existing : 0) + item.weight)
     };
   }
   return result;
@@ -69,7 +70,7 @@ export function BundleFormPage() {
       .then((bundle) => {
         if (cancelled) return;
         setName(bundle.name);
-        setItems(bundle.items.map((item) => ({ food: item.food, weight: String(item.weight) })));
+        setItems(bundle.items.map((item) => ({ food: item.food, weight: formatEditableNumber(item.weight) })));
       })
       .catch((requestError: unknown) => {
         if (!cancelled) setLoadError(requestError instanceof Error ? requestError.message : "Не удалось загрузить бандл");

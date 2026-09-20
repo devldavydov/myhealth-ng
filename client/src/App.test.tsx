@@ -260,6 +260,7 @@ describe("MyHealth SPA", () => {
     fireEvent.mouseDown(option);
     fireEvent.click(option);
     const weightInput = await within(zone).findByLabelText("Вес продукта Творог");
+    expect(weightInput).toHaveFocus();
     fireEvent.change(weightInput, { target: { value: "порция 150,5 г" } });
     fireEvent.click(within(zone).getAllByRole("button", { name: "Добавить" }).at(-1)!);
 
@@ -408,7 +409,7 @@ describe("MyHealth SPA", () => {
   });
 
   it("загружает и редактирует продукт на отдельной странице", async () => {
-    let current = food;
+    let current = { ...food, cal100: 120.06, prot100: 18.44, fat100: 5.55, carb100: 3.04 };
     const itemURL = `/api/food/${food.key}`;
     const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
       if (input === "/api/me") return response({ data: user });
@@ -424,6 +425,10 @@ describe("MyHealth SPA", () => {
 
     expect(await screen.findByRole("heading", { name: "Изменить продукт" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText("Название")).toHaveValue("Творог"));
+    expect(screen.getByLabelText("Ккал, на 100 г")).toHaveValue("120,1");
+    expect(screen.getByLabelText("Белки, г")).toHaveValue("18,4");
+    expect(screen.getByLabelText("Жиры, г")).toHaveValue("5,6");
+    expect(screen.getByLabelText("Углеводы, г")).toHaveValue("3");
     fireEvent.change(screen.getByLabelText("Название"), { target: { value: "Творог мягкий" } });
     fireEvent.click(screen.getByRole("button", { name: "Сохранить изменения" }));
 

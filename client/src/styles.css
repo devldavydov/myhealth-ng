@@ -49,12 +49,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   background: #167d74;
 }
 .main-navigation { justify-self: center; }
-.main-navigation nav { display: flex; gap: 8px; }
+.main-navigation nav { display: flex; gap: 4px; }
 .main-navigation nav a {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 10px 15px;
+  padding: 10px 11px;
   border-radius: 10px;
   color: #657975;
   font-size: 14px;
@@ -62,7 +62,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   text-decoration: none;
 }
 .main-navigation nav a.active { color: #126b64; background: #e7f3ef; }
-.navigation-icon { display: none; flex: 0 0 auto; }
+.navigation-icon { display: block; flex: 0 0 auto; }
 .mobile-nav-toggle { display: none; }
 .topbar .user-badge { justify-self: end; }
 
@@ -126,6 +126,7 @@ input, textarea {
   background: #fbfdfc;
   outline: none;
 }
+input[type="date"] { min-width: 0; max-width: 100%; }
 textarea { min-height: 82px; resize: vertical; }
 input:focus, textarea:focus { border-color: #2b9185; box-shadow: 0 0 0 3px #ddf1ed; }
 input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
@@ -424,6 +425,14 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  position: fixed;
+  z-index: 80;
+  top: 92px;
+  right: max(24px, calc((100vw - 1180px) / 2));
+  width: min(380px, calc(100vw - 48px));
+  border: 1px solid #c9e3dc;
+  box-shadow: 0 16px 42px rgba(25, 62, 56, .2);
+  animation: notification-rise-in .18s ease-out;
 }
 .notification-timer {
   width: 20px;
@@ -447,10 +456,15 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   to { stroke-dashoffset: 50.27; }
 }
 
+
+@keyframes notification-rise-in {
+  from { opacity: 0; transform: translateY(-8px); }
+}
 .journal-page-header { align-items: end; margin-bottom: 24px; }
 .journal-date-control { display: grid; grid-template-columns: 44px minmax(150px, 190px) 44px auto; gap: 8px; }
 .journal-date-control .button { min-width: 0; padding: 8px; }
 .journal-today-button { padding-inline: 14px !important; }
+.journal-date-control input { min-width: 0; width: 100%; }
 .journal-summary {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
@@ -481,7 +495,9 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .calorie-goal.exceeded .calorie-goal-track span { background: #c9535e; }
 .calorie-goal-empty { grid-column: 1 / -1; margin: 0; color: #657975; font-size: 13px; }
 .calorie-goal-empty a { color: #167d74; font-weight: 800; }
-.journal-page > .save-success { margin-bottom: 16px; }
+.calorie-balance { justify-self: end; font-size: 13px; }
+.calorie-balance.remaining { color: #18776d; }
+.calorie-balance.over { color: #b63f4c; }
 .journal-zones { display: grid; gap: 16px; }
 .journal-zone {
   overflow: hidden;
@@ -510,6 +526,25 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .journal-item > div small { color: #7a8c88; font-size: 10px; }
 .journal-item > span { color: #536965; font-size: 12px; font-weight: 700; white-space: nowrap; }
 
+.journal-item-actions { display: flex !important; grid-auto-flow: column; gap: 6px !important; }
+.icon-button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: #45635e;
+  background: #edf3f1;
+  cursor: pointer;
+}
+.icon-button:hover { color: #126b64; background: #e0eeea; }
+.icon-button.success { color: #fff; background: #167d74; }
+.icon-button.danger { color: #a83f4b; background: #fae8ea; }
+.icon-button:disabled { opacity: .55; cursor: wait; }
+.journal-item-edit label { display: grid; gap: 4px; color: #536965; font-size: 11px; font-weight: 700; }
+.journal-item-edit input { min-height: 40px; padding: 8px 10px; }
 @media (max-width: 860px) {
   .page { padding-top: 36px; }
   .weight-overview { grid-template-columns: 1fr; }
@@ -526,6 +561,13 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
     height: 64px;
     padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     grid-template-columns: auto 1fr auto;
+  }
+  .timed-notification {
+    top: 76px;
+    right: max(12px, env(safe-area-inset-right));
+    left: max(12px, env(safe-area-inset-left));
+    width: auto;
+    max-width: none;
   }
   .brand > span:last-child { display: none; }
   .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
@@ -620,13 +662,14 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .bundle-item-row { grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; }
   .bundle-item-row .text-button { grid-column: 1 / -1; border-top: 1px solid #e2ebe8; }
   .bundle-total { display: grid; gap: 5px; }
-  .journal-date-control { width: 100%; grid-template-columns: 44px 1fr 44px; }
+  .journal-date-control { width: 100%; grid-template-columns: 44px minmax(0, 1fr) 44px; }
   .journal-today-button { grid-column: 1 / -1; }
   .journal-summary { padding: 18px 16px; border-radius: 18px; }
   .journal-calories strong { font-size: 25px; }
   .journal-macros { gap: 6px; }
   .journal-macros div { padding: 10px 8px; }
   .calorie-goal > div:first-child { display: grid; gap: 4px; }
+  .calorie-balance { justify-self: start; }
   .journal-zone-header > div:first-child { min-width: 0; }
   .journal-zone-header p { font-size: 13px; line-height: 1.45; }
   .journal-zone-header { align-items: flex-start; padding: 16px 14px; }
@@ -640,7 +683,9 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .journal-item { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; padding: 11px 9px 11px 14px; }
   .journal-item > div small { overflow: visible; color: #667b76; font-size: 12px; line-height: 1.4; text-overflow: clip; white-space: normal; }
   .journal-item > span { text-align: right; }
-  .journal-item .text-button { grid-column: 1 / -1; border-top: 1px solid #edf2f0; }
+  .journal-item-actions { grid-column: 1 / -1; justify-self: end; }
+  .journal-item-edit label { width: min(130px, 100%); justify-self: end; }
+  .journal-item-edit input { min-height: 42px; }
 }
 
 @media (max-width: 380px) {
@@ -652,6 +697,6 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dialog-backdrop, .dialog-card { animation: none; }
+  .dialog-backdrop, .dialog-card, .timed-notification { animation: none; }
   .mobile-nav-chevron, .main-navigation nav { transition: none; }
 }

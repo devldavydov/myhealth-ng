@@ -44,6 +44,7 @@ describe("активные калории в журнале", () => {
     const input = await screen.findByLabelText("Активные калории за день");
     expect(input).toHaveValue("300");
     expect(screen.getByText("80% · 240 из 300 ккал")).toBeInTheDocument();
+    expect(screen.getByText("Осталось 60 ккал")).toHaveClass("remaining");
     expect(screen.getByText("Лимит за выбранный день")).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: "около 2750,5 ккал" } });
@@ -71,6 +72,7 @@ describe("активные калории в журнале", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(`/api/active-calories/${dt}`, { method: "DELETE" }));
     expect(await screen.findByText("120% · 240 из 200 ккал")).toBeInTheDocument();
+    expect(screen.getByText("Перерасход 40 ккал")).toHaveClass("over");
     expect(screen.getByText("Дефолтный дневной лимит")).toBeInTheDocument();
     expect(screen.getByLabelText("Прогресс дневного лимита")).toHaveClass("exceeded");
   });
@@ -88,5 +90,42 @@ describe("активные калории в журнале", () => {
     expect(screen.getByText(/Задайте активные калории за день/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
     expect(await screen.findByText("Укажите активные калории")).toBeInTheDocument();
+  });
+
+  it("редактирует вес продукта прямо в журнале", async () => {
+    const food = {
+      key: "творог", name: "Творог", brand: "Ферма",
+      cal100: 120, prot100: 18, fat100: 5, carb100: 3, comment: ""
+    };
+    const journal = {
+      ...day,
+      zones: day.zones.map((zone) => zone.meal === "завтрак"
+        ? { ...zone, items: [{ food, weight: 123.456 }] }
+        : zone)
+    };
+    let savedBody: unknown;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === `/api/journal?dt=${dt}`) return response({ data: journal });
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: 300 } });
+      if (input === `/api/active-calories?dt=${dt}`) return response({ data: null });
+      if (input === "/api/journal" && init?.method === "POST") {
+        savedBody = JSON.parse(String(init.body));
+        return response({ data: journal });
+      }
+      return response({ data: [] });
+    }));
+    render(<MemoryRouter initialEntries={[`/journal?dt=${dt}`]}><JournalPage /></MemoryRouter>);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Редактировать Творог в завтрак" }));
+    const weightInput = screen.getByLabelText("Вес продукта Творог");
+    expect(weightInput).toHaveValue("123,5");
+    expect(weightInput).toHaveFocus();
+    fireEvent.change(weightInput, { target: { value: "150,5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить вес продукта Творог" }));
+
+    await waitFor(() => expect(savedBody).toEqual({
+      dt, meal: "завтрак", items: [{ foodKey: "творог", weight: 150.5 }]
+    }));
+    expect(await screen.findByText("Вес продукта «Творог» изменён.")).toBeInTheDocument();
   });
 });

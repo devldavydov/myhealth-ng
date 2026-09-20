@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, createFood, getFoodByKey, updateFood, type Food, type FoodData } from "../api";
+import { formatEditableNumber } from "../numeric";
 
 type NutritionMode = "per100" | "portion";
 type NumericField = "weight" | "cal100" | "prot100" | "fat100" | "carb100";
@@ -38,10 +39,10 @@ function foodToForm(food: Food): FormState {
   return {
     name: food.name,
     brand: food.brand,
-    cal100: String(food.cal100),
-    prot100: String(food.prot100),
-    fat100: String(food.fat100),
-    carb100: String(food.carb100),
+    cal100: formatEditableNumber(food.cal100),
+    prot100: formatEditableNumber(food.prot100),
+    fat100: formatEditableNumber(food.fat100),
+    carb100: formatEditableNumber(food.carb100),
     comment: food.comment,
     weight: ""
   };

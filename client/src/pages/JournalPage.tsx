@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ApiError,
@@ -20,9 +21,11 @@ import {
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { FoodBundlePicker, type FoodBundleOption } from "../components/FoodBundlePicker";
 import { TimedNotification } from "../components/TimedNotification";
+import { formatEditableNumber } from "../numeric";
 
 type PendingFood = { meal: MealType; food: Food };
 type DeleteTarget = { meal: MealType; food?: Food };
+type EditingFood = { meal: MealType; food: Food; weight: string };
 
 const numberFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 1 });
 const dateFormat = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
@@ -76,6 +79,8 @@ export function JournalPage() {
   const [activeMeal, setActiveMeal] = useState<MealType | null>(null);
   const [pendingFood, setPendingFood] = useState<PendingFood | null>(null);
   const [weight, setWeight] = useState("");
+  const [editingFood, setEditingFood] = useState<EditingFood | null>(null);
+  const [editingWeightError, setEditingWeightError] = useState("");
   const [weightError, setWeightError] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -84,6 +89,8 @@ export function JournalPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const dismissMessage = useCallback(() => setMessage(""), []);
   const loadRequestRef = useRef(0);
+  const pendingWeightRef = useRef<HTMLInputElement>(null);
+  const editingWeightRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (rawDate !== selectedDate) setSearchParams({ dt: selectedDate }, { replace: true });
@@ -118,17 +125,27 @@ export function JournalPage() {
     setActiveMeal(null);
     setPendingFood(null);
     setMessage("");
+    setEditingFood(null);
     void load(selectedDate);
     setDeleteTarget(null);
     setDeleteActiveCaloriesOpen(false);
     return () => { loadRequestRef.current += 1; };
   }, [load, selectedDate]);
 
+
+  useEffect(() => {
+    if (pendingFood) pendingWeightRef.current?.focus();
+  }, [pendingFood]);
+
+  useEffect(() => {
+    if (editingFood) editingWeightRef.current?.focus();
+  }, [editingFood]);
   const effectiveCalorieLimit = activeCalories?.value ?? calorieLimit;
   const limitPercent = useMemo(
     () => effectiveCalorieLimit ? (day?.totals.cal ?? 0) / effectiveCalorieLimit * 100 : null,
     [day, effectiveCalorieLimit]
   );
+  const calorieBalance = effectiveCalorieLimit === null ? null : effectiveCalorieLimit - (day?.totals.cal ?? 0);
 
   function chooseDate(value: string) {
     if (validDate(value)) setSearchParams({ dt: value });
@@ -188,6 +205,7 @@ export function JournalPage() {
     setError("");
     setMessage("");
     setWeightError("");
+    setEditingFood(null);
     if (option.type === "food") {
       setPendingFood({ meal, food: option.food });
       setWeight("");
@@ -241,6 +259,45 @@ export function JournalPage() {
       setWeight("");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не удалось добавить продукт");
+    } finally {
+      setMutating(false);
+    }
+  }
+
+
+  function startEditing(meal: MealType, food: Food, itemWeight: number) {
+    setActiveMeal(null);
+    setPendingFood(null);
+    setEditingWeightError("");
+    setMessage("");
+    setEditingFood({ meal, food, weight: formatEditableNumber(itemWeight) });
+  }
+
+  async function saveEditedFood(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingFood) return;
+    const numericWeight = Number(editingFood.weight.replace(",", "."));
+    if (!editingFood.weight.trim()) {
+      setEditingWeightError("Укажите вес");
+      return;
+    }
+    if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
+      setEditingWeightError("Вес должен быть больше нуля");
+      return;
+    }
+    setMutating(true);
+    setError("");
+    try {
+      const updated = await saveJournal({
+        dt: selectedDate,
+        meal: editingFood.meal,
+        items: [{ foodKey: editingFood.food.key, weight: numericWeight }]
+      });
+      setDay(updated);
+      setMessage(`Вес продукта «${editingFood.food.name}» изменён.`);
+      setEditingFood(null);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Не удалось изменить вес продукта");
     } finally {
       setMutating(false);
     }
@@ -323,6 +380,9 @@ export function JournalPage() {
                   <strong>{numberFormat.format(limitPercent ?? 0)}% · {numberFormat.format(day.totals.cal)} из {numberFormat.format(effectiveCalorieLimit)} ккал</strong>
                 </div>
                 <div className="calorie-goal-track"><span style={{ width: `${Math.min(100, limitPercent ?? 0)}%` }} /></div>
+                <strong className={`calorie-balance ${(calorieBalance ?? 0) < 0 ? "over" : "remaining"}`}>
+                  {(calorieBalance ?? 0) < 0 ? "Перерасход" : "Осталось"} {numberFormat.format(Math.abs(calorieBalance ?? 0))} ккал
+                </strong>
               </div>
             ) : <p className="calorie-goal-empty">Дневной лимит не задан. Задайте активные калории за день или <Link to="/settings">дефолтный лимит в настройках</Link>.</p>}
           </section>
@@ -345,7 +405,7 @@ export function JournalPage() {
                       <form className="journal-weight-form" noValidate onSubmit={saveFood}>
                         <div><strong>{pendingFood.food.name}</strong><small>{pendingFood.food.brand || "Без бренда"}</small></div>
                         <label>Вес, г
-                          <input aria-invalid={Boolean(weightError)} aria-label={`Вес продукта ${pendingFood.food.name}`} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={weight} onChange={(event) => { setWeight(normalizeWeight(event.target.value)); setWeightError(""); }} />
+                          <input ref={pendingWeightRef} aria-invalid={Boolean(weightError)} aria-label={`Вес продукта ${pendingFood.food.name}`} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={weight} onChange={(event) => { setWeight(normalizeWeight(event.target.value)); setWeightError(""); }} />
                           {weightError && <span className="field-error" role="alert">{weightError}</span>}
                         </label>
                         <button className="button primary" disabled={mutating} type="submit">Добавить</button>
@@ -356,12 +416,40 @@ export function JournalPage() {
 
                 {zone.items.length === 0 ? <p className="journal-zone-empty">Нет записей</p> : (
                   <div className="journal-items">
-                    {zone.items.map((item) => (
+                    {zone.items.map((item) => editingFood?.meal === zone.meal && editingFood.food.key === item.food.key ? (
+                      <form className="journal-item journal-item-edit" key={item.food.key} noValidate onSubmit={saveEditedFood}>
+                        <div><strong>{item.food.name}</strong><small>{item.food.brand || "Без бренда"}</small></div>
+                        <label>
+                          <span>Вес, г</span>
+                          <input
+                            ref={editingWeightRef}
+                            aria-invalid={Boolean(editingWeightError)}
+                            aria-label={`Вес продукта ${item.food.name}`}
+                            inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
+                            value={editingFood.weight}
+                            onChange={(event) => {
+                              setEditingFood({ ...editingFood, weight: normalizeWeight(event.target.value) });
+                              setEditingWeightError("");
+                            }}
+                          />
+                          {editingWeightError && <span className="field-error" role="alert">{editingWeightError}</span>}
+                        </label>
+                        <span>{numberFormat.format(item.food.cal100 * (Number(editingFood.weight.replace(",", ".")) || 0) / 100)} ккал</span>
+                        <div className="journal-item-actions">
+                          <button aria-label={`Сохранить вес продукта ${item.food.name}`} className="icon-button success" disabled={mutating} title="Сохранить" type="submit"><Check aria-hidden="true" size={18} /></button>
+                          <button aria-label={`Отменить редактирование ${item.food.name}`} className="icon-button" disabled={mutating} onClick={() => setEditingFood(null)} title="Отмена" type="button"><X aria-hidden="true" size={18} /></button>
+                        </div>
+                      </form>
+                    ) : (
                       <div className="journal-item" key={item.food.key}>
                         <div><strong>{item.food.name}</strong><small>{item.food.brand || "Без бренда"}</small></div>
                         <span>{numberFormat.format(item.weight)} г</span>
                         <span>{numberFormat.format(item.food.cal100 * item.weight / 100)} ккал</span>
-                        <button aria-label={`Удалить ${item.food.name} из ${zone.meal}`} className="text-button danger" disabled={mutating} onClick={() => setDeleteTarget({ meal: zone.meal, food: item.food })} type="button">Удалить</button>
+                        <div className="journal-item-actions">
+                          <button aria-label={`Редактировать ${item.food.name} в ${zone.meal}`} className="icon-button" disabled={mutating} onClick={() => startEditing(zone.meal, item.food, item.weight)} title="Редактировать" type="button"><Pencil aria-hidden="true" size={17} /></button>
+                          <button aria-label={`Удалить ${item.food.name} из ${zone.meal}`} className="icon-button danger" disabled={mutating} onClick={() => setDeleteTarget({ meal: zone.meal, food: item.food })} title="Удалить" type="button"><Trash2 aria-hidden="true" size={17} /></button>
+                        </div>
                       </div>
                     ))}
                   </div>

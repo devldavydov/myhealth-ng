@@ -1,5 +1,6 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { ApiError, getSettings, saveSettings } from "../api";
+import { TimedNotification } from "../components/TimedNotification";
 
 interface SettingsPageProps {
   userName: string;
@@ -18,6 +19,7 @@ export function SettingsPage({ userName }: SettingsPageProps) {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const dismissSaved = useCallback(() => setSaved(false), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +85,7 @@ export function SettingsPage({ userName }: SettingsPageProps) {
       ) : (
         <section className="food-form-card settings-card">
           {saveError && <div className="error" role="alert">{saveError}</div>}
-          {saved && <div className="save-success" role="status">Настройки сохранены.</div>}
+          <TimedNotification message={saved ? "Настройки сохранены." : ""} onDismiss={dismissSaved} />
           <form noValidate onSubmit={handleSubmit}>
             <label>Лимит ккал в день по умолчанию
               <input

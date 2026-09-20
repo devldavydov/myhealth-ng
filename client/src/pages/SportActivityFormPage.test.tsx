@@ -16,6 +16,7 @@ it("создаёт активность на отдельной странице
   }));
   render(<MemoryRouter initialEntries={["/sport-activity/new"]}><Routes><Route path="/sport-activity/new" element={<SportActivityFormPage/>}/><Route path="/sport-activity" element={<h1>Активность</h1>}/></Routes></MemoryRouter>);
   const picker=screen.getByRole("combobox",{name:"Поиск вида спорта"});fireEvent.focus(picker);fireEvent.change(picker,{target:{value:"Тур"}});fireEvent.mouseDown(await screen.findByText("Турник"));fireEvent.click(screen.getByText("Турник"));
+  await waitFor(()=>expect(screen.getByLabelText("Подход 1")).toHaveFocus());
   fireEvent.change(screen.getByLabelText("Подход 1"),{target:{value:"5"}});fireEvent.click(screen.getByRole("button",{name:"Добавить подход"}));fireEvent.change(screen.getByLabelText("Подход 2"),{target:{value:"3,5"}});fireEvent.click(screen.getByRole("button",{name:"Сохранить"}));
   await waitFor(()=>expect(saved).toMatchObject({sportKey:"турник",sets:[5,3.5]}));expect(await screen.findByRole("heading",{name:"Активность"})).toBeInTheDocument();
 });
