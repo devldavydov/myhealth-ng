@@ -125,6 +125,30 @@ export interface JournalSaveData {
   items: Array<{ foodKey: string; weight: number }>;
 }
 
+export interface DashboardCalorieDay {
+  dt: string;
+  balance: number;
+}
+
+export interface DashboardCalories {
+  days: DashboardCalorieDay[];
+  average: number | null;
+}
+
+export interface DashboardActivity {
+  sportKey: string;
+  name: string;
+  count: number;
+  total: number;
+  unit: string;
+}
+
+export interface DashboardData {
+  calories: DashboardCalories | null;
+  weightChange: number | null;
+  activities: DashboardActivity[];
+}
+
 export class ApiError extends Error {
   constructor(message: string, readonly details: Record<string, string[]> = {}) {
     super(message);
@@ -216,6 +240,10 @@ export async function clearJournalMeal(dt: string, meal: MealType): Promise<Jour
   return (await apiRequest<{ data: JournalDay }>(`/api/journal/${encodeURIComponent(dt)}/${encodeURIComponent(meal)}`, {
     method: "DELETE"
   })).data;
+}
+
+export async function getDashboard(from: string, to: string): Promise<DashboardData> {
+  return (await apiRequest<{ data: DashboardData }>(`/api/dashboard?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)).data;
 }
 
 export async function getFood(query: PageQuery = {}): Promise<Page<Food>> {

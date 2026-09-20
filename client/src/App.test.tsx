@@ -86,29 +86,37 @@ describe("MyHealth SPA", () => {
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
-  it("перенаправляет с корневого адреса в журнал текущего дня", async () => {
+  it("показывает дашборд на корневом адресе без отдельного пункта меню", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 20, 12));
-    const today = "2026-09-20";
     const fetchMock = vi.fn().mockImplementation(async (input: string) => {
       if (input === "/api/me") return response({ data: user });
-      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
-      if (input === `/api/active-calories?dt=${today}`) return response({ data: null });
-      if (input === `/api/journal?dt=${today}`) return response({ data: { ...journalDay(false), dt: today } });
+      if (input === "/api/dashboard?from=2026-08-20&to=2026-09-20") {
+        return response({ data: { calories: { days: [], average: null }, weightChange: null, activities: [] } });
+      }
       return response({ data: [] });
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<MemoryRouter initialEntries={["/"]}><App /></MemoryRouter>);
 
-    expect(await screen.findByRole("heading", { name: "Журнал" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Дата журнала")).toHaveValue(today);
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([input]) => input === `/api/journal?dt=${today}`)).toBe(true);
-    });
-    expect(screen.getByRole("link", { name: "Еда" })).toHaveAttribute("href", "/food");
-    expect(screen.getByRole("link", { name: "Вес" })).toHaveAttribute("href", "/weight");
+    expect(await screen.findByRole("heading", { name: "Главная" })).toBeInTheDocument();
+    expect(screen.getByLabelText("От")).toHaveValue("2026-08-20");
+    expect(screen.getByLabelText("До")).toHaveValue("2026-09-20");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/dashboard?from=2026-08-20&to=2026-09-20", undefined));
+    expect(screen.getByRole("link", { name: "M+ MyHealth" })).toHaveAttribute("href", "/");
+    expect(within(screen.getByRole("navigation", { name: "Основная навигация" })).queryByText("Главная")).not.toBeInTheDocument();
     expect(await screen.findByText("Анна")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Настройки пользователя: Анна" })).toHaveAttribute("href", "/settings");
+  });
+
+  it("перенаправляет неизвестный адрес на главную", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: string) =>
+      input === "/api/me"
+        ? response({ data: user })
+        : response({ data: { calories: { days: [], average: null }, weightChange: null, activities: [] } })
+    ));
+    render(<MemoryRouter initialEntries={["/missing/page"]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Главная" })).toBeInTheDocument();
   });
 
   it("раскрывает и закрывает меню разделов", async () => {

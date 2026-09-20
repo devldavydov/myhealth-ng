@@ -2,7 +2,7 @@ import "./user-badge.css";
 import "./sport.css";
 import "./sport-tabs.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Activity, Apple, BookOpenText, ChevronDown, Dumbbell, PackageOpen, Scale, Settings } from "lucide-react";
+import { Activity, Apple, BookOpenText, ChevronDown, Dumbbell, LayoutDashboard, PackageOpen, Scale, Settings } from "lucide-react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
@@ -12,6 +12,7 @@ import { SportActivityOverviewPage } from "./pages/SportActivityOverviewPage";
 import { SportActivityFormPage } from "./pages/SportActivityFormPage";
 import { FoodPage } from "./pages/FoodPage";
 
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const WeightPage = lazy(() => import("./pages/WeightPage").then((module) => ({ default: module.WeightPage })));
 const BundlePage = lazy(() => import("./pages/BundlePage").then((module) => ({ default: module.BundlePage })));
 const BundleFormPage = lazy(() => import("./pages/BundleFormPage").then((module) => ({ default: module.BundleFormPage })));
@@ -28,13 +29,16 @@ const sections = [
 ];
 
 const settingsSection = { label: "Настройки", icon: Settings };
+const dashboardSection = { label: "Главная", icon: LayoutDashboard };
 
 export function App() {
   const [userName, setUserName] = useState("Пользователь");
   const [navigationOpen, setNavigationOpen] = useState(false);
   const navigationRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const currentSection = location.pathname === "/settings"
+  const currentSection = location.pathname === "/"
+    ? dashboardSection
+    : location.pathname === "/settings"
     ? settingsSection
     : sections.find((section) => location.pathname === section.path || location.pathname.startsWith(section.path + "/")) ?? sections[0];
   const CurrentSectionIcon = currentSection.icon;
@@ -99,7 +103,11 @@ export function App() {
       <main>
         <Routes>
           <Route path="/food" element={<FoodPage />} />
-          <Route path="/" element={<Navigate replace to="/journal" />} />
+          <Route path="/" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка главной…</p></div>}>
+              <DashboardPage />
+            </Suspense>
+          )} />
           <Route path="/journal" element={(
             <Suspense fallback={<div className="page"><p className="muted">Загрузка журнала…</p></div>}>
               <JournalPage />
@@ -138,7 +146,7 @@ export function App() {
               <SettingsPage userName={userName} />
             </Suspense>
           )} />
-          <Route path="*" element={<Navigate replace to="/food" />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </main>
     </div>

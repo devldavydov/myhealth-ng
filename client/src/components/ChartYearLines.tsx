@@ -33,7 +33,16 @@ export function ChartYearLines({ markers, categorical = false }: { markers: Char
   return markers.map((marker) => (
     <ReferenceLine
       key={marker.year}
-      label={{ value: String(marker.year), position: "insideTopLeft", fill: "#526963", fontSize: 12, fontWeight: 600 }}
+      label={{
+        value: String(marker.year),
+        position: "top",
+        offset: 6,
+        textAnchor: "start",
+        dx: 4,
+        fill: "#526963",
+        fontSize: 12,
+        fontWeight: 600
+      }}
       position={categorical ? "start" : undefined}
       stroke={marker.separator ? "#9bb1ab" : "transparent"}
       strokeDasharray="3 4"

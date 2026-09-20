@@ -1,5 +1,17 @@
 import { expect, it } from "vitest";
-import { categoricalYearMarkers, timeYearMarkers } from "./ChartYearLines";
+import { categoricalYearMarkers, ChartYearLines, timeYearMarkers } from "./ChartYearLines";
+
+it("размещает подпись года над областью графика справа от разделителя", () => {
+  const [line] = ChartYearLines({ markers: [{ value: "2026-01-10", year: 2026, separator: false }] });
+
+  expect(line.props.label).toMatchObject({
+    value: "2026",
+    position: "top",
+    offset: 6,
+    textAnchor: "start",
+    dx: 4
+  });
+});
 
 it("показывает первый год даже для данных в пределах одного года", () => {
   expect(categoricalYearMarkers([{ dt: "2026-01-10" }, { dt: "2026-12-20" }])).toEqual([

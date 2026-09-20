@@ -11,10 +11,18 @@ type Options struct {
 }
 
 func NewRouter(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, options Options) *gin.Engine {
-	return NewRouterWithSport(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, nil, nil, options)
+	return newRouter(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, nil, nil, nil, options)
 }
 
 func NewRouterWithSport(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, sportCases port.SportUseCases, sportActivityCases port.SportActivityUseCases, options Options) *gin.Engine {
+	return newRouter(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, sportCases, sportActivityCases, nil, options)
+}
+
+func NewRouterWithSportAndDashboard(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, sportCases port.SportUseCases, sportActivityCases port.SportActivityUseCases, dashboardCases port.DashboardUseCases, options Options) *gin.Engine {
+	return newRouter(foodCases, weightCases, bundleCases, settingsCases, journalCases, activeCaloriesCases, sportCases, sportActivityCases, dashboardCases, options)
+}
+
+func newRouter(foodCases port.FoodUseCases, weightCases port.WeightUseCases, bundleCases port.BundleUseCases, settingsCases port.SettingsUseCases, journalCases port.JournalUseCases, activeCaloriesCases port.ActiveCaloriesUseCases, sportCases port.SportUseCases, sportActivityCases port.SportActivityUseCases, dashboardCases port.DashboardUseCases, options Options) *gin.Engine {
 	router := gin.New()
 	_ = router.SetTrustedProxies(nil)
 	router.Use(gin.Logger(), recovery(), identity(options.CertificateRequired))
@@ -50,6 +58,10 @@ func NewRouterWithSport(foodCases port.FoodUseCases, weightCases port.WeightUseC
 	router.POST("/api/bundle", bundle.create)
 	router.PUT("/api/bundle/:key", bundle.update)
 	router.DELETE("/api/bundle/:key", bundle.delete)
+	if dashboardCases != nil {
+		dashboard := newDashboardHandler(dashboardCases)
+		router.GET("/api/dashboard", dashboard.get)
+	}
 	if sportCases != nil && sportActivityCases != nil {
 		sport := newSportHandler(sportCases)
 		sportActivity := newSportActivityHandler(sportActivityCases)
