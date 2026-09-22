@@ -2,7 +2,7 @@ import "./user-badge.css";
 import "./sport.css";
 import "./sport-tabs.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Activity, Apple, BookOpenText, ChevronDown, Dumbbell, LayoutDashboard, PackageOpen, Scale, Settings } from "lucide-react";
+import { Activity, Apple, BookOpenText, ChartNoAxesCombined, ChevronDown, Dumbbell, PackageOpen, Scale, Settings } from "lucide-react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
@@ -21,6 +21,7 @@ const JournalPage = lazy(() => import("./pages/JournalPage").then((module) => ({
 
 const sections = [
   { path: "/journal", label: "Журнал", icon: BookOpenText },
+  { path: "/analytics", label: "Аналитика", icon: ChartNoAxesCombined },
   { path: "/food", label: "Еда", icon: Apple },
   { path: "/bundle", label: "Бандлы", icon: PackageOpen },
   { path: "/weight", label: "Вес", icon: Scale },
@@ -29,16 +30,13 @@ const sections = [
 ];
 
 const settingsSection = { label: "Настройки", icon: Settings };
-const dashboardSection = { label: "Главная", icon: LayoutDashboard };
 
 export function App() {
   const [userName, setUserName] = useState("Пользователь");
   const [navigationOpen, setNavigationOpen] = useState(false);
   const navigationRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const currentSection = location.pathname === "/"
-    ? dashboardSection
-    : location.pathname === "/settings"
+  const currentSection = location.pathname === "/settings"
     ? settingsSection
     : sections.find((section) => location.pathname === section.path || location.pathname.startsWith(section.path + "/")) ?? sections[0];
   const CurrentSectionIcon = currentSection.icon;
@@ -70,7 +68,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <NavLink className="brand" to="/">
+        <NavLink className="brand" to="/journal">
           <span className="brand-mark">M+</span><span>MyHealth</span>
         </NavLink>
         <div className={`main-navigation ${navigationOpen ? "is-open" : ""}`} ref={navigationRef}>
@@ -103,8 +101,8 @@ export function App() {
       <main>
         <Routes>
           <Route path="/food" element={<FoodPage />} />
-          <Route path="/" element={(
-            <Suspense fallback={<div className="page"><p className="muted">Загрузка главной…</p></div>}>
+          <Route path="/analytics" element={(
+            <Suspense fallback={<div className="page"><p className="muted">Загрузка аналитики…</p></div>}>
               <DashboardPage />
             </Suspense>
           )} />
@@ -146,7 +144,8 @@ export function App() {
               <SettingsPage userName={userName} />
             </Suspense>
           )} />
-          <Route path="*" element={<Navigate replace to="/" />} />
+          <Route path="/" element={<Navigate replace to="/journal" />} />
+          <Route path="*" element={<Navigate replace to="/journal" />} />
         </Routes>
       </main>
     </div>

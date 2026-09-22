@@ -19,6 +19,7 @@ import {
   type MealType
 } from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { CopyMealDialog } from "../components/CopyMealDialog";
 import { FoodBundlePicker, type FoodBundleOption } from "../components/FoodBundlePicker";
 import { TimedNotification } from "../components/TimedNotification";
 import { formatEditableNumber } from "../numeric";
@@ -87,6 +88,10 @@ export function JournalPage() {
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [copyTargetMeal, setCopyTargetMeal] = useState<MealType | null>(null);
+  const [copySourceDate, setCopySourceDate] = useState(shiftDate(selectedDate, -1));
+  const [copySourceMeal, setCopySourceMeal] = useState<MealType>("завтрак");
+  const [copyError, setCopyError] = useState("");
   const dismissMessage = useCallback(() => setMessage(""), []);
   const loadRequestRef = useRef(0);
   const pendingWeightRef = useRef<HTMLInputElement>(null);
@@ -129,6 +134,8 @@ export function JournalPage() {
     void load(selectedDate);
     setDeleteTarget(null);
     setDeleteActiveCaloriesOpen(false);
+    setCopyTargetMeal(null);
+    setCopyError("");
     return () => { loadRequestRef.current += 1; };
   }, [load, selectedDate]);
 
@@ -321,6 +328,53 @@ export function JournalPage() {
     }
   }
 
+  function openCopyDialog(meal: MealType) {
+    setActiveMeal(null);
+    setPendingFood(null);
+    setEditingFood(null);
+    setMessage("");
+    setError("");
+    setCopySourceDate(shiftDate(selectedDate, -1));
+    setCopySourceMeal(meal);
+    setCopyError("");
+    setCopyTargetMeal(meal);
+  }
+
+  async function copyMeal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!copyTargetMeal) return;
+    if (!validDate(copySourceDate)) {
+      setCopyError("Укажите корректную дату источника");
+      return;
+    }
+
+    setMutating(true);
+    setCopyError("");
+    try {
+      const sourceDay = await getJournal(copySourceDate);
+      const sourceItems = sourceDay.zones.find((zone) => zone.meal === copySourceMeal)?.items ?? [];
+      if (sourceItems.length === 0) {
+        setCopyError("В выбранном приёме пищи нет записей для копирования.");
+        return;
+      }
+
+      const targetKeys = new Set(zoneFor(copyTargetMeal)?.items.map((item) => item.food.key));
+      const replacements = sourceItems.filter((item) => targetKeys.has(item.food.key)).length;
+      const updated = await saveJournal({
+        dt: selectedDate,
+        meal: copyTargetMeal,
+        items: sourceItems.map((item) => ({ foodKey: item.food.key, weight: item.weight }))
+      });
+      setDay(updated);
+      setCopyTargetMeal(null);
+      setMessage(`Скопировано позиций: ${sourceItems.length}.${replacements ? ` Перезаписано: ${replacements}.` : ""}`);
+    } catch (requestError) {
+      setCopyError(requestError instanceof Error ? requestError.message : "Не удалось скопировать приём пищи");
+    } finally {
+      setMutating(false);
+    }
+  }
+
   return (
     <div className="page journal-page">
       <header className="page-header journal-page-header">
@@ -395,6 +449,7 @@ export function JournalPage() {
                 <header className="journal-zone-header">
                   <div><h2>{zone.meal}</h2><p>{numberFormat.format(zone.totals.cal)} ккал · Б {numberFormat.format(zone.totals.protein)} · Ж {numberFormat.format(zone.totals.fat)} · У {numberFormat.format(zone.totals.carb)}</p></div>
                   <div className="journal-zone-actions">
+                    <button className="text-button" disabled={mutating} onClick={() => openCopyDialog(zone.meal)} type="button">Копировать</button>
                     <button className="text-button" disabled={mutating} onClick={() => { setActiveMeal(activeMeal === zone.meal ? null : zone.meal); setPendingFood(null); setMessage(""); }} type="button">{activeMeal === zone.meal ? "Закрыть" : "Добавить"}</button>
                     {zone.items.length > 0 && <button className="text-button danger" disabled={mutating} onClick={() => setDeleteTarget({ meal: zone.meal })} type="button">Очистить</button>}
                   </div>
@@ -460,6 +515,22 @@ export function JournalPage() {
             ))}
           </div>
         </>
+      )}
+
+      {copyTargetMeal && (
+        <CopyMealDialog
+          busy={mutating}
+          error={copyError}
+          onCancel={() => { setCopyTargetMeal(null); setCopyError(""); }}
+          onSourceDateChange={(value) => { setCopySourceDate(value); setCopyError(""); }}
+          onSourceMealChange={(value) => { setCopySourceMeal(value); setCopyError(""); }}
+          onSubmit={copyMeal}
+          open
+          sourceDate={copySourceDate}
+          sourceMeal={copySourceMeal}
+          targetDate={dateFormat.format(parseLocalDate(selectedDate))}
+          targetMeal={copyTargetMeal}
+        />
       )}
 
       <ConfirmDialog

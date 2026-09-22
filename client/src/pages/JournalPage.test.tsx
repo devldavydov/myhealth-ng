@@ -130,4 +130,109 @@ describe("активные калории в журнале", () => {
     }));
     expect(await screen.findByText("Вес продукта «Творог» изменён.")).toBeInTheDocument();
   });
+  it("копирует выбранный приём пищи и перезаписывает совпадающие продукты", async () => {
+    const existingFood = {
+      key: "творог", name: "Творог", brand: "Ферма",
+      cal100: 120, prot100: 18, fat100: 5, carb100: 3, comment: ""
+    };
+    const secondFood = {
+      key: "банан", name: "Банан", brand: "",
+      cal100: 90, prot100: 1, fat100: 0, carb100: 22, comment: ""
+    };
+    const targetDay = {
+      ...day,
+      zones: day.zones.map((zone) => zone.meal === "завтрак"
+        ? { ...zone, items: [{ food: existingFood, weight: 50 }] }
+        : zone)
+    };
+    const sourceDay = {
+      ...day,
+      dt: "2026-09-15",
+      zones: day.zones.map((zone) => zone.meal === "обед"
+        ? { ...zone, items: [{ food: existingFood, weight: 150 }, { food: secondFood, weight: 80 }] }
+        : zone)
+    };
+    let savedBody: unknown;
+    const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/journal?dt=2026-09-16") return response({ data: targetDay });
+      if (input === "/api/journal?dt=2026-09-15") return response({ data: sourceDay });
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
+      if (input === "/api/active-calories?dt=2026-09-16") return response({ data: null });
+      if (input === "/api/journal" && init?.method === "POST") {
+        savedBody = JSON.parse(String(init.body));
+        return response({ data: targetDay });
+      }
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/journal?dt=2026-09-16"]}><JournalPage /></MemoryRouter>);
+
+    const breakfastHeading = await screen.findByRole("heading", { name: "завтрак" });
+    const breakfast = breakfastHeading.closest("section");
+    expect(breakfast).not.toBeNull();
+    const zoneButtons = within(breakfast as HTMLElement).getAllByRole("button");
+    expect(zoneButtons[0]).toHaveTextContent("Копировать");
+    expect(zoneButtons[1]).toHaveTextContent("Добавить");
+    fireEvent.click(within(breakfast as HTMLElement).getByRole("button", { name: "Копировать" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Копировать в «завтрак»" });
+    expect(within(dialog).getByLabelText("Дата источника")).toHaveValue("2026-09-15");
+    await waitFor(() => expect(within(dialog).getByLabelText("Дата источника")).toHaveFocus());
+    expect(within(dialog).getByLabelText("Приём пищи")).toHaveValue("завтрак");
+    fireEvent.change(within(dialog).getByLabelText("Приём пищи"), { target: { value: "обед" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Копировать" }));
+
+    await waitFor(() => expect(savedBody).toEqual({
+      dt: "2026-09-16",
+      meal: "завтрак",
+      items: [{ foodKey: "творог", weight: 150 }, { foodKey: "банан", weight: 80 }]
+    }));
+    expect(await screen.findByText("Скопировано позиций: 2. Перезаписано: 1.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Копировать в «завтрак»" })).not.toBeInTheDocument();
+  });
+
+  it("оставляет диалог открытым и не сохраняет пустой источник", async () => {
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/journal?dt=2026-09-16") return response({ data: day });
+      if (input === "/api/journal?dt=2026-09-15") return response({ data: { ...day, dt: "2026-09-15" } });
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
+      if (input === "/api/active-calories?dt=2026-09-16") return response({ data: null });
+      if (input === "/api/journal" && init?.method === "POST") postCount += 1;
+      return response({ data: [] });
+    }));
+    render(<MemoryRouter initialEntries={["/journal?dt=2026-09-16"]}><JournalPage /></MemoryRouter>);
+
+    const breakfast = (await screen.findByRole("heading", { name: "завтрак" })).closest("section");
+    fireEvent.click(within(breakfast as HTMLElement).getByRole("button", { name: "Копировать" }));
+    const dialog = screen.getByRole("dialog", { name: "Копировать в «завтрак»" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Копировать" }));
+
+    expect(await within(dialog).findByText("В выбранном приёме пищи нет записей для копирования.")).toBeInTheDocument();
+    expect(dialog).toBeInTheDocument();
+    expect(postCount).toBe(0);
+  });
+
+  it("оставляет диалог открытым при ошибке загрузки источника", async () => {
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/journal?dt=2026-09-16") return response({ data: day });
+      if (input === "/api/journal?dt=2026-09-15") return response({ error: "Источник недоступен" }, false);
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
+      if (input === "/api/active-calories?dt=2026-09-16") return response({ data: null });
+      if (input === "/api/journal" && init?.method === "POST") postCount += 1;
+      return response({ data: [] });
+    }));
+    render(<MemoryRouter initialEntries={["/journal?dt=2026-09-16"]}><JournalPage /></MemoryRouter>);
+
+    const breakfast = (await screen.findByRole("heading", { name: "завтрак" })).closest("section");
+    fireEvent.click(within(breakfast as HTMLElement).getByRole("button", { name: "Копировать" }));
+    const dialog = screen.getByRole("dialog", { name: "Копировать в «завтрак»" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Копировать" }));
+
+    expect(await within(dialog).findByText("Источник недоступен")).toBeInTheDocument();
+    expect(dialog).toBeInTheDocument();
+    expect(postCount).toBe(0);
+  });
+
 });

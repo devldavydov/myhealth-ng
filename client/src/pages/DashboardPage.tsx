@@ -117,7 +117,7 @@ export function DashboardPage() {
       <header className="page-header dashboard-header">
         <div>
           <p className="eyebrow">Обзор</p>
-          <h1>Главная</h1>
+          <h1>Аналитика</h1>
           <p className="page-description">Ваши ключевые показатели здоровья за выбранный период.</p>
         </div>
       </header>

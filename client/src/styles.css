@@ -217,6 +217,13 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .dialog-card h2 { font-size: 25px; }
 .dialog-message { margin-top: 14px; color: #657975; font-size: 14px; line-height: 1.6; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
+.copy-meal-form { display: grid; gap: 16px; margin-top: 18px; }
+.copy-meal-form label { display: grid; gap: 7px; color: #536965; font-size: 12px; font-weight: 700; }
+.copy-meal-form select { width: 100%; min-height: 48px; padding: 11px 36px 11px 13px; border: 1px solid #ccdad6; border-radius: 10px; color: #173330; background: #fbfdfc; font: inherit; }
+.copy-meal-form select:focus { border-color: #2b9185; outline: none; box-shadow: 0 0 0 3px #ddf1ed; }
+.copy-meal-form .dialog-actions { margin-top: 8px; }
+.copy-meal-error { margin-bottom: 0; }
+
 
 @keyframes dialog-fade-in {
   from { opacity: 0; }
@@ -763,6 +770,7 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
     width: 100%;
     grid-template-columns: 44px minmax(0, 1fr) 44px;
   }
+  .journal-page-header { margin-bottom: 8px; }
   .journal-today-button { grid-column: 1 / -1; }
   .journal-summary { padding: 18px 16px; border-radius: 18px; }
   .journal-calories strong { font-size: 25px; }
@@ -773,7 +781,8 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .journal-zone-header > div:first-child { min-width: 0; }
   .journal-zone-header p { font-size: 13px; line-height: 1.45; }
   .journal-zone-header { align-items: flex-start; padding: 16px 14px; }
-  .journal-zone-actions { flex-direction: column; }
+  .journal-zone-actions { display: grid; grid-template-columns: auto auto; align-items: start; }
+  .journal-zone-actions .danger { grid-column: 1 / -1; justify-self: end; }
   .journal-add-panel { padding: 14px; }
   .active-calories-form { grid-template-columns: 1fr; }
   .active-calories-actions { display: grid; grid-template-columns: 1fr; padding-top: 0; }

@@ -7,7 +7,7 @@ function response(data: unknown) {
   return { ok: true, json: async () => ({ data }) };
 }
 
-describe("главная страница", () => {
+describe("страница аналитики", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
@@ -43,7 +43,7 @@ describe("главная страница", () => {
 
     render(<MemoryRouter><DashboardPage /></MemoryRouter>);
 
-    expect(await screen.findByRole("heading", { name: "Главная" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Аналитика" })).toBeInTheDocument();
     expect(screen.getByLabelText("От")).toHaveValue("2026-02-28");
     expect(screen.getByLabelText("До")).toHaveValue("2026-03-31");
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/dashboard?from=2026-02-28&to=2026-03-31", undefined));
