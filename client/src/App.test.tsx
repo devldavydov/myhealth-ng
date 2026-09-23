@@ -200,6 +200,37 @@ describe("MyHealth SPA", () => {
     expect(limit).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("подставляет рассчитанный лимит и сохраняет его только по кнопке настроек", async () => {
+    let savedBody: { defaultDailyCalorieLimit: number } | undefined;
+    const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input === "/api/settings" && init?.method === "PUT") {
+        savedBody = JSON.parse(String(init.body)) as { defaultDailyCalorieLimit: number };
+        return response({ data: savedBody });
+      }
+      if (input === "/api/settings") return response({ data: { defaultDailyCalorieLimit: null } });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/settings"]}><App /></MemoryRouter>);
+
+    const limit = await screen.findByLabelText("Лимит ккал в день по умолчанию");
+    fireEvent.click(screen.getByRole("button", { name: "Рассчитать" }));
+    const dialog = screen.getByRole("dialog", { name: "Калькулятор калорий" });
+    fireEvent.change(within(dialog).getByLabelText("Возраст, лет"), { target: { value: "30" } });
+    fireEvent.change(within(dialog).getByLabelText("Рост, см"), { target: { value: "165" } });
+    fireEvent.change(within(dialog).getByLabelText("Вес, кг"), { target: { value: "70" } });
+    fireEvent.change(within(dialog).getByLabelText("Активность"), { target: { value: "1.55" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Рассчитать" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Выбрать поддержание веса: 2201 ккал" }));
+
+    expect(limit).toHaveValue("2201");
+    expect(screen.queryByRole("dialog", { name: "Калькулятор калорий" })).not.toBeInTheDocument();
+    expect(savedBody).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    await waitFor(() => expect(savedBody).toEqual({ defaultDailyCalorieLimit: 2201 }));
+  });
+
   it("показывает журнал, массовые проценты БЖУ и удаляет продукт после подтверждения", async () => {
     let current = journalDay(true);
     const itemURL = `/api/journal/2026-09-16/${encodeURIComponent("завтрак")}/${food.key}`;

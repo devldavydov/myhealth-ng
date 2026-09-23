@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { ApiError, getSettings, saveSettings } from "../api";
+import { CalorieCalculatorDialog } from "../components/CalorieCalculatorDialog";
 import { TimedNotification } from "../components/TimedNotification";
 
 interface SettingsPageProps {
@@ -19,6 +20,7 @@ export function SettingsPage({ userName }: SettingsPageProps) {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const dismissSaved = useCallback(() => setSaved(false), []);
 
   useEffect(() => {
@@ -87,19 +89,23 @@ export function SettingsPage({ userName }: SettingsPageProps) {
           {saveError && <div className="error" role="alert">{saveError}</div>}
           <TimedNotification message={saved ? "Настройки сохранены." : ""} onDismiss={dismissSaved} />
           <form noValidate onSubmit={handleSubmit}>
-            <label>Лимит ккал в день по умолчанию
-              <input
-                aria-label="Лимит ккал в день по умолчанию"
-                aria-invalid={Boolean(fieldError)}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={limit}
-                onChange={(event) => changeLimit(event.target.value)}
-                placeholder="Например, 2000"
-              />
+            <div className="settings-limit-field">
+              <label htmlFor="default-calorie-limit">Лимит ккал в день по умолчанию</label>
+              <div className="settings-limit-control">
+                <input
+                  aria-invalid={Boolean(fieldError)}
+                  id="default-calorie-limit"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={limit}
+                  onChange={(event) => changeLimit(event.target.value)}
+                  placeholder="Например, 2000"
+                />
+                <button className="button secondary" onClick={() => setCalculatorOpen(true)} type="button">Рассчитать</button>
+              </div>
               {fieldError && <span className="field-error" role="alert">{fieldError}</span>}
               <span className="form-hint">Целое число от 1 до 10000 ккал.</span>
-            </label>
+            </div>
             <div className="form-actions">
               <button className="button primary" disabled={saving} type="submit">
                 {saving ? "Сохраняем…" : "Сохранить"}
@@ -108,6 +114,14 @@ export function SettingsPage({ userName }: SettingsPageProps) {
           </form>
         </section>
       )}
+      <CalorieCalculatorDialog
+        open={calculatorOpen}
+        onCancel={() => setCalculatorOpen(false)}
+        onSelect={(value) => {
+          changeLimit(String(value));
+          setCalculatorOpen(false);
+        }}
+      />
     </div>
   );
 }

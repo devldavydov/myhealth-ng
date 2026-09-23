@@ -10,8 +10,8 @@
 * { box-sizing: border-box; }
 html { scrollbar-gutter: stable; }
 body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; }
-button, input, textarea { font: inherit; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
+button, input, select, textarea { font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
   outline: 3px solid #a8dcd4;
   outline-offset: 2px;
 }
@@ -223,6 +223,45 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .copy-meal-form select:focus { border-color: #2b9185; outline: none; box-shadow: 0 0 0 3px #ddf1ed; }
 .copy-meal-form .dialog-actions { margin-top: 8px; }
 .copy-meal-error { margin-bottom: 0; }
+.calorie-calculator-card { width: min(100%, 660px); max-height: calc(100dvh - 48px); overflow-y: auto; }
+.calorie-calculator-form { display: grid; gap: 18px; margin-top: 18px; }
+.calorie-calculator-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.calorie-calculator-fields label { display: grid; align-content: start; gap: 7px; color: #536965; font-size: 12px; font-weight: 700; }
+.calorie-calculator-fields select {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 36px 11px 13px;
+  border: 1px solid #ccdad6;
+  border-radius: 10px;
+  color: #173330;
+  background: #fbfdfc;
+  outline: none;
+}
+.calorie-calculator-fields select:focus { border-color: #2b9185; box-shadow: 0 0 0 3px #ddf1ed; }
+.calorie-activity-field { grid-column: 1 / -1; }
+.calorie-calculate-button { justify-self: start; }
+.calorie-results { display: grid; gap: 10px; padding-top: 4px; }
+.calorie-results > p { margin: 0; color: #536965; font-size: 12px; font-weight: 700; }
+.calorie-result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.calorie-result {
+  display: grid;
+  gap: 4px;
+  padding: 14px 12px;
+  border: 1px solid #cfe2dd;
+  border-radius: 13px;
+  color: #245f56;
+  background: #edf7f4;
+  text-align: left;
+  cursor: pointer;
+}
+.calorie-result:hover { border-color: #83bab2; background: #e3f2ee; }
+.calorie-result.loss { color: #3c655f; background: #f1f6f4; }
+.calorie-result.gain { color: #755b24; border-color: #e5d9b8; background: #faf5e8; }
+.calorie-result span { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.calorie-result strong { font-size: 18px; white-space: nowrap; }
+.calorie-result small { color: #6e817d; font-size: 10px; line-height: 1.35; }
+.calorie-disclaimer { margin: 0; color: #7a8c88; font-size: 10px; line-height: 1.5; }
+.calorie-calculator-form .dialog-actions { margin-top: 0; }
 
 
 @keyframes dialog-fade-in {
@@ -504,6 +543,9 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
 .settings-page .settings-card { width: min(620px, 100%); }
 .settings-card form { gap: 22px; }
 .settings-card .form-actions { margin-top: 4px; }
+.settings-limit-field { display: grid; gap: 8px; }
+.settings-limit-field > label { color: #536965; font-size: 13px; font-weight: 700; }
+.settings-limit-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
 .save-success {
   padding: 13px 15px;
   border-radius: 11px;
@@ -748,6 +790,12 @@ input[aria-invalid="true"] { border-color: #c9535e; background: #fffafb; }
   .dialog-backdrop { align-items: end; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
   .dialog-card { padding: 22px 18px 18px; border-radius: 20px; }
   .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .calorie-calculator-card { max-height: calc(100dvh - 24px); }
+  .calorie-calculator-fields, .calorie-result-grid { grid-template-columns: 1fr; }
+  .calorie-activity-field { grid-column: auto; }
+  .calorie-calculate-button { width: 100%; }
+  .calorie-calculator-form .dialog-actions { grid-template-columns: 1fr; }
+  .settings-limit-control { grid-template-columns: 1fr; }
   .weight-panel { padding: 19px 16px; border-radius: 17px; }
   .weight-filter-form, .weight-entry-form { grid-template-columns: 1fr; }
   .sport-activity-page .weight-filter-form,
