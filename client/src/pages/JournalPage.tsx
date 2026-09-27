@@ -460,7 +460,11 @@ export function JournalPage() {
                     <FoodBundlePicker disabled={mutating} inputId={`journal-picker-${day.zones.indexOf(zone)}`} onError={setError} onSelect={(option) => addOption(zone.meal, option)} />
                     {pendingFood?.meal === zone.meal && (
                       <form className="journal-weight-form" noValidate onSubmit={saveFood}>
-                        <div><strong>{pendingFood.food.name}</strong><small>{pendingFood.food.brand || "Без бренда"}</small></div>
+                        <div>
+                          <strong>{pendingFood.food.name}</strong>
+                          <small>{pendingFood.food.brand || "Без бренда"}</small>
+                          {pendingFood.food.comment && <small>{pendingFood.food.comment}</small>}
+                        </div>
                         <label>Вес, г
                           <input ref={pendingWeightRef} aria-invalid={Boolean(weightError)} aria-label={`Вес продукта ${pendingFood.food.name}`} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={weight} onChange={(event) => { setWeight(normalizeWeight(event.target.value)); setWeightError(""); }} />
                           {weightError && <span className="field-error" role="alert">{weightError}</span>}

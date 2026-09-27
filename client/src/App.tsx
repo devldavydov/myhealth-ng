@@ -4,7 +4,7 @@ import "./sport-tabs.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Activity, Apple, BookOpenText, ChartNoAxesCombined, ChevronDown, Dumbbell, PackageOpen, Scale, Settings } from "lucide-react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { getCurrentUser } from "./api";
+import { getCurrentUser, type CurrentUser } from "./api";
 import { FoodFormPage } from "./pages/FoodFormPage";
 import { SportFormPage } from "./pages/SportPage";
 import { SportCatalogPage } from "./pages/SportCatalogPage";
@@ -32,7 +32,7 @@ const sections = [
 const settingsSection = { label: "Настройки", icon: Settings };
 
 export function App() {
-  const [userName, setUserName] = useState("Пользователь");
+  const [user, setUser] = useState<CurrentUser>({ guid: "", name: "Пользователь" });
   const [navigationOpen, setNavigationOpen] = useState(false);
   const navigationRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -42,7 +42,9 @@ export function App() {
   const CurrentSectionIcon = currentSection.icon;
 
   useEffect(() => {
-    void getCurrentUser().then((user) => user?.name && setUserName(user.name)).catch(() => undefined);
+    void getCurrentUser()
+      .then((currentUser) => setUser({ ...currentUser, name: currentUser.name || "Пользователь" }))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -93,9 +95,9 @@ export function App() {
             ))}
           </nav>
         </div>
-        <Link className="user-badge" to="/settings" aria-label={`Настройки пользователя: ${userName}`} title="Открыть настройки пользователя">
-          <span aria-hidden="true">{userName.slice(0, 1).toUpperCase()}</span>
-          <strong>{userName}</strong>
+        <Link className="user-badge" to="/settings" aria-label={`Настройки пользователя: ${user.name}`} title="Открыть настройки пользователя">
+          <span aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span>
+          <strong>{user.name}</strong>
         </Link>
       </header>
       <main>
@@ -141,7 +143,7 @@ export function App() {
           )} />
           <Route path="/settings" element={(
             <Suspense fallback={<div className="page"><p className="muted">Загрузка настроек…</p></div>}>
-              <SettingsPage userName={userName} />
+              <SettingsPage user={user} />
             </Suspense>
           )} />
           <Route path="/" element={<Navigate replace to="/journal" />} />

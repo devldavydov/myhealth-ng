@@ -95,7 +95,7 @@ describe("активные калории в журнале", () => {
   it("редактирует вес продукта прямо в журнале", async () => {
     const food = {
       key: "творог", name: "Творог", brand: "Ферма",
-      cal100: 120, prot100: 18, fat100: 5, carb100: 3, comment: ""
+      cal100: 120, prot100: 18, fat100: 5, carb100: 3, comment: "Пачка 180 г"
     };
     const journal = {
       ...day,
@@ -118,7 +118,9 @@ describe("активные калории в журнале", () => {
 
     expect(await screen.findByRole("link", { name: "Редактировать продукт Творог" }))
       .toHaveAttribute("href", "/food/%D1%82%D0%B2%D0%BE%D1%80%D0%BE%D0%B3/edit");
+    expect(screen.queryByText("Пачка 180 г")).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "Редактировать Творог в завтрак" }));
+    expect(screen.queryByText("Пачка 180 г")).not.toBeInTheDocument();
     const weightInput = screen.getByLabelText("Вес продукта Творог");
     expect(weightInput).toHaveValue("123,5");
     expect(weightInput).toHaveFocus();

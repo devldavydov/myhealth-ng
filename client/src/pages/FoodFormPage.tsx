@@ -83,6 +83,7 @@ export function FoodFormPage() {
   const editing = key !== undefined;
   const [form, setForm] = useState<FormState>(emptyForm);
   const [mode, setMode] = useState<NutritionMode>("per100");
+  const [commentCustomized, setCommentCustomized] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
@@ -123,6 +124,21 @@ export function FoodFormPage() {
 
   function setNumericField(field: NumericField, value: string) {
     setField(field, normalizeNumericInput(value));
+  }
+
+  function setWeight(value: string) {
+    const normalized = normalizeNumericInput(value);
+    setForm((current) => ({
+      ...current,
+      weight: normalized,
+      comment: commentCustomized ? current.comment : normalized === "" ? "" : `Вес ${normalized} гр.`
+    }));
+    setFieldErrors((current) => {
+      if (!current.weight) return current;
+      const next = { ...current };
+      delete next.weight;
+      return next;
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -182,7 +198,7 @@ export function FoodFormPage() {
             )}
             {mode === "portion" && !editing && (
               <label>Вес продукта, г
-                <input aria-invalid={Boolean(fieldErrors.weight)} aria-label="Вес продукта, г" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={form.weight} onChange={(event) => setNumericField("weight", event.target.value)} placeholder="Например, 250" />
+                <input aria-invalid={Boolean(fieldErrors.weight)} aria-label="Вес продукта, г" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={form.weight} onChange={(event) => setWeight(event.target.value)} placeholder="Например, 250" />
                 <FieldError message={fieldErrors.weight} />
               </label>
             )}
@@ -210,7 +226,7 @@ export function FoodFormPage() {
               </div>
             )}
             <label>Комментарий
-              <textarea value={form.comment} onChange={(event) => setField("comment", event.target.value)} placeholder="Необязательно" />
+              <textarea value={form.comment} onChange={(event) => { setCommentCustomized(true); setField("comment", event.target.value); }} placeholder="Необязательно" />
             </label>
             <div className="form-actions">
               <button className="button primary" disabled={saving} type="submit">{saving ? "Сохраняем…" : editing ? "Сохранить изменения" : "Добавить"}</button>

@@ -1,10 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { ApiError, getSettings, saveSettings } from "../api";
+import { ApiError, getSettings, saveSettings, type CurrentUser } from "../api";
 import { CalorieCalculatorDialog } from "../components/CalorieCalculatorDialog";
 import { TimedNotification } from "../components/TimedNotification";
 
 interface SettingsPageProps {
-  userName: string;
+  user: CurrentUser;
 }
 
 function fieldErrorFrom(error: unknown): string {
@@ -12,7 +12,7 @@ function fieldErrorFrom(error: unknown): string {
   return error.details.defaultDailyCalorieLimit?.[0] ?? "";
 }
 
-export function SettingsPage({ userName }: SettingsPageProps) {
+export function SettingsPage({ user }: SettingsPageProps) {
   const [limit, setLimit] = useState("");
   const [fieldError, setFieldError] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -77,9 +77,10 @@ export function SettingsPage({ userName }: SettingsPageProps) {
   return (
     <div className="page settings-page">
       <header className="form-page-header">
-        <p className="eyebrow">{userName}</p>
+        <p className="eyebrow">{user.name}</p>
         <h1>Настройки</h1>
         <p className="page-description">Персональные параметры используются только для текущего пользователя.</p>
+        <p className="settings-user-id"><span>ID пользователя</span><code>{user.guid || "Загрузка…"}</code></p>
       </header>
 
       {loading ? <p className="muted">Загрузка настроек…</p> : loadError ? (

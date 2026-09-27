@@ -177,6 +177,7 @@ describe("MyHealth SPA", () => {
     render(<MemoryRouter initialEntries={["/settings"]}><App /></MemoryRouter>);
 
     expect(await screen.findByRole("heading", { name: "Настройки" })).toBeInTheDocument();
+    expect(await screen.findByText(user.guid)).toBeInTheDocument();
     const limit = await screen.findByLabelText("Лимит ккал в день по умолчанию");
     expect(limit).toHaveValue("");
     fireEvent.change(limit, { target: { value: "около 2500 ккал" } });
@@ -313,6 +314,8 @@ describe("MyHealth SPA", () => {
     fireEvent.mouseDown(option);
     fireEvent.click(option);
     const weightInput = await within(zone).findByLabelText("Вес продукта Творог");
+    expect(within(zone).getByText("Ферма")).toBeInTheDocument();
+    expect(within(zone).getByText("5%")).toBeInTheDocument();
     expect(weightInput).toHaveFocus();
     fireEvent.change(weightInput, { target: { value: "порция 150,5 г" } });
     fireEvent.click(within(zone).getAllByRole("button", { name: "Добавить" }).at(-1)!);
@@ -322,6 +325,7 @@ describe("MyHealth SPA", () => {
       meal: "завтрак",
       items: [{ foodKey: food.key, weight: 150.5 }]
     }));
+    expect(within(zone).queryByText("5%")).not.toBeInTheDocument();
   });
 
   it("показывает историю веса за последние шесть календарных месяцев", async () => {
@@ -429,6 +433,7 @@ describe("MyHealth SPA", () => {
     fireEvent.change(screen.getByLabelText("Название"), { target: { value: "Йогурт" } });
     fireEvent.click(screen.getByLabelText("На другой вес"));
     fireEvent.change(screen.getByLabelText("Вес продукта, г"), { target: { value: "250" } });
+    expect(screen.getByLabelText("Комментарий")).toHaveValue("Вес 250 гр.");
     fireEvent.change(screen.getByLabelText("Ккал, на указанный вес"), { target: { value: "200" } });
     fireEvent.change(screen.getByLabelText("Белки, г"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("Жиры, г"), { target: { value: "5" } });
@@ -436,8 +441,25 @@ describe("MyHealth SPA", () => {
     fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
 
     await waitFor(() => expect(createdBody).toBeDefined());
-    expect(createdBody).toMatchObject({ name: "Йогурт", cal100: 80, prot100: 4, fat100: 2, carb100: 8 });
+    expect(createdBody).toMatchObject({ name: "Йогурт", cal100: 80, prot100: 4, fat100: 2, carb100: 8, comment: "Вес 250 гр." });
     expect(await screen.findByRole("heading", { name: "Продукты" })).toBeInTheDocument();
+  });
+
+  it("не перезаписывает изменённый пользователем комментарий при корректировке веса", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: string) =>
+      input === "/api/me" ? response({ data: user }) : response({ data: [] })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={["/food/new"]}><App /></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Добавить продукт" });
+
+    fireEvent.click(screen.getByLabelText("На другой вес"));
+    fireEvent.change(screen.getByLabelText("Вес продукта, г"), { target: { value: "250" } });
+    expect(screen.getByLabelText("Комментарий")).toHaveValue("Вес 250 гр.");
+
+    fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Одна упаковка" } });
+    fireEvent.change(screen.getByLabelText("Вес продукта, г"), { target: { value: "300" } });
+    expect(screen.getByLabelText("Комментарий")).toHaveValue("Одна упаковка");
   });
 
   it("не принимает текст в КБЖУ и показывает ошибку под полем", async () => {
