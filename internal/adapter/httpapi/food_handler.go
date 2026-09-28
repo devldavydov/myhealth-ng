@@ -39,6 +39,18 @@ type foodResponse struct {
 	Comment string  `json:"comment"`
 }
 
+type foodStatisticsResponse struct {
+	TotalWeightKg             float64  `json:"totalWeightKg"`
+	FirstConsumedDate         *string  `json:"firstConsumedDate"`
+	LastConsumedDate          *string  `json:"lastConsumedDate"`
+	AveragePortionWeightGrams *float64 `json:"averagePortionWeightGrams"`
+}
+
+type foodDetailsResponse struct {
+	foodResponse
+	Statistics *foodStatisticsResponse `json:"statistics"`
+}
+
 func newFoodHandler(food port.FoodUseCases) *foodHandler {
 	return &foodHandler{food: food}
 }
@@ -62,12 +74,12 @@ func (handler *foodHandler) list(ctx *gin.Context) {
 }
 
 func (handler *foodHandler) get(ctx *gin.Context) {
-	item, err := handler.food.Get(ctx.Request.Context(), ctx.Param("key"))
+	item, err := handler.food.Get(ctx.Request.Context(), currentUserID(ctx), ctx.Param("key"))
 	if err != nil {
 		respondFoodError(ctx, err)
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": toFoodResponse(item)})
+	ctx.JSON(http.StatusOK, gin.H{"data": toFoodDetailsResponse(item)})
 }
 
 func (handler *foodHandler) create(ctx *gin.Context) {
@@ -192,4 +204,25 @@ func toFoodResponse(food entity.Food) foodResponse {
 		Fat100: food.Fat100, Carb100: food.Carb100,
 		Comment: food.Comment,
 	}
+}
+
+func toFoodDetailsResponse(details entity.FoodDetails) foodDetailsResponse {
+	response := foodDetailsResponse{foodResponse: toFoodResponse(details.Food)}
+	if details.Statistics == nil {
+		return response
+	}
+	statistics := &foodStatisticsResponse{
+		TotalWeightKg:             details.Statistics.TotalWeight / 1000,
+		AveragePortionWeightGrams: details.Statistics.AveragePortionWeight,
+	}
+	if details.Statistics.FirstConsumedDate != nil {
+		value := details.Statistics.FirstConsumedDate.Format(dateLayout)
+		statistics.FirstConsumedDate = &value
+	}
+	if details.Statistics.LastConsumedDate != nil {
+		value := details.Statistics.LastConsumedDate.Format(dateLayout)
+		statistics.LastConsumedDate = &value
+	}
+	response.Statistics = statistics
+	return response
 }

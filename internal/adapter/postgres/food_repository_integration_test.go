@@ -90,14 +90,38 @@ func TestFoodRepositoryWithPostgres(t *testing.T) {
 	if err != nil || updated.Name != "Банан мини" || math.Abs(updated.Prot100-1.2) > .0001 {
 		t.Fatalf("updated=%+v err=%v", updated, err)
 	}
-	loaded, err := repository.Get(ctx, banana.Key)
-	if err != nil || loaded.Name != updated.Name {
+	loaded, err := repository.Get(ctx, "user-a", banana.Key)
+	if err != nil || loaded.Food.Name != updated.Name || loaded.Statistics == nil || loaded.Statistics.TotalWeight != 0 || loaded.Statistics.FirstConsumedDate != nil || loaded.Statistics.AveragePortionWeight != nil {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO journal (user_id, dt, meal, food_key, food_weight) VALUES
+        ('user-a', '2026-01-02', 'завтрак', $1, 200),
+        ('user-a', '2026-01-04', 'ужин', $1, 300),
+        ('user-b', '2026-01-01', 'обед', $1, 9000)`, banana.Key); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err = repository.Get(ctx, "user-a", banana.Key)
+	if err != nil || loaded.Statistics == nil || loaded.Statistics.TotalWeight != 500 || loaded.Statistics.AveragePortionWeight == nil || math.Abs(*loaded.Statistics.AveragePortionWeight-250) > .0001 || loaded.Statistics.FirstConsumedDate == nil || loaded.Statistics.FirstConsumedDate.Day() != 2 || loaded.Statistics.LastConsumedDate == nil || loaded.Statistics.LastConsumedDate.Day() != 4 {
+		t.Fatalf("statistics=%+v err=%v", loaded.Statistics, err)
+	}
+	special := entity.Food{Key: "00000000-0000-4000-8000-000000000001", Name: entity.FoodStatisticsExcludedName}
+	if _, err := repository.Create(ctx, special); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO journal (user_id, dt, meal, food_key, food_weight) VALUES ('user-a', '2026-01-03', 'обед', $1, 1000)`, special.Key); err != nil {
+		t.Fatal(err)
+	}
+	specialDetails, err := repository.Get(ctx, "user-a", special.Key)
+	if err != nil || specialDetails.Statistics != nil {
+		t.Fatalf("special food statistics=%+v err=%v", specialDetails.Statistics, err)
+	}
+	if _, err := db.ExecContext(ctx, `DELETE FROM journal WHERE food_key = $1`, banana.Key); err != nil {
+		t.Fatal(err)
 	}
 	if err := repository.Delete(ctx, banana.Key); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repository.Get(ctx, banana.Key); !errors.Is(err, port.ErrFoodNotFound) {
+	if _, err := repository.Get(ctx, "user-a", banana.Key); !errors.Is(err, port.ErrFoodNotFound) {
 		t.Fatalf("get deleted error=%v", err)
 	}
 	if err := repository.Delete(ctx, banana.Key); !errors.Is(err, port.ErrFoodNotFound) {

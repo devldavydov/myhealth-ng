@@ -41,9 +41,12 @@ func (dashboard *Dashboard) Get(ctx context.Context, userID string, period entit
 	if err != nil {
 		return entity.Dashboard{}, err
 	}
-	result := entity.Dashboard{Activities: source.Activities}
+	result := entity.Dashboard{Activities: source.Activities, TopFoods: source.TopFoods}
 	if result.Activities == nil {
 		result.Activities = make([]entity.DashboardActivity, 0)
+	}
+	if result.TopFoods == nil {
+		result.TopFoods = make([]entity.DashboardFood, 0)
 	}
 	if source.DefaultDailyCalorieLimit != nil {
 		calories := entity.DashboardCalories{Days: make([]entity.DashboardCalorieDay, 0, len(source.CalorieDays))}

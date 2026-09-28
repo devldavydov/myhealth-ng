@@ -15,7 +15,7 @@ var (
 
 type FoodRepository interface {
 	List(context.Context, entity.PageRequest) (entity.Page[entity.Food], error)
-	Get(context.Context, string) (entity.Food, error)
+	Get(context.Context, string, string) (entity.FoodDetails, error)
 	Create(context.Context, entity.Food) (entity.Food, error)
 	Update(context.Context, string, entity.FoodData) (entity.Food, error)
 	Delete(context.Context, string) error
@@ -23,7 +23,7 @@ type FoodRepository interface {
 
 type FoodUseCases interface {
 	List(context.Context, entity.PageRequest) (entity.Page[entity.Food], error)
-	Get(context.Context, string) (entity.Food, error)
+	Get(context.Context, string, string) (entity.FoodDetails, error)
 	Create(context.Context, entity.FoodData) (entity.Food, error)
 	Update(context.Context, string, entity.FoodData) (entity.Food, error)
 	Delete(context.Context, string) error

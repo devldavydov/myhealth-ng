@@ -92,7 +92,7 @@ describe("MyHealth SPA", () => {
     const fetchMock = vi.fn().mockImplementation(async (input: string) => {
       if (input === "/api/me") return response({ data: user });
       if (input === "/api/dashboard?from=2026-08-20&to=2026-09-20") {
-        return response({ data: { calories: { days: [], average: null }, weightChange: null, activities: [] } });
+		return response({ data: { calories: { days: [], average: null }, weightChange: null, activities: [], topFoods: [] } });
       }
       return response({ data: [] });
     });
@@ -484,7 +484,19 @@ describe("MyHealth SPA", () => {
   });
 
   it("загружает и редактирует продукт на отдельной странице", async () => {
-    let current = { ...food, cal100: 120.06, prot100: 18.44, fat100: 5.55, carb100: 3.04 };
+    let current = {
+      ...food,
+      cal100: 120.06,
+      prot100: 18.44,
+      fat100: 5.55,
+      carb100: 3.04,
+      statistics: {
+        totalWeightKg: 1.505,
+        firstConsumedDate: "2026-01-02",
+        lastConsumedDate: "2026-03-04",
+        averagePortionWeightGrams: 250.5
+      }
+    };
     const itemURL = `/api/food/${food.key}`;
     const fetchMock = vi.fn().mockImplementation(async (input: string, init?: RequestInit) => {
       if (input === "/api/me") return response({ data: user });
@@ -504,11 +516,59 @@ describe("MyHealth SPA", () => {
     expect(screen.getByLabelText("Белки, г")).toHaveValue("18,4");
     expect(screen.getByLabelText("Жиры, г")).toHaveValue("5,6");
     expect(screen.getByLabelText("Углеводы, г")).toHaveValue("3");
+    expect(screen.getByRole("heading", { name: "Статистика" })).toBeInTheDocument();
+    expect(screen.getByText("1,505 кг")).toBeInTheDocument();
+    expect(screen.getByText("02.01.2026")).toBeInTheDocument();
+    expect(screen.getByText("04.03.2026")).toBeInTheDocument();
+    expect(screen.getByText("250,5 г")).toBeInTheDocument();
+    const statisticsHeading = screen.getByRole("heading", { name: "Статистика" });
+    expect(Array.from(statisticsHeading.parentElement?.querySelectorAll(".food-statistics-grid span") ?? []).map((element) => element.textContent)).toEqual([
+      "Первый приём", "Последний приём", "Съедено всего", "Средняя порция"
+    ]);
     fireEvent.change(screen.getByLabelText("Название"), { target: { value: "Творог мягкий" } });
     fireEvent.click(screen.getByRole("button", { name: "Сохранить изменения" }));
 
     expect(await screen.findByRole("heading", { name: "Творог мягкий" })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(itemURL, expect.objectContaining({ method: "PUT" }));
+  });
+
+  it("показывает пустую статистику продукта без истории", async () => {
+    const itemURL = `/api/food/${food.key}`;
+    const fetchMock = vi.fn().mockImplementation(async (input: string) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input === itemURL) return response({
+        data: {
+          ...food,
+          statistics: {
+            totalWeightKg: 0,
+            firstConsumedDate: null,
+            lastConsumedDate: null,
+            averagePortionWeightGrams: null
+          }
+        }
+      });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={[`/food/${food.key}/edit`]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Статистика" })).toBeInTheDocument();
+    expect(screen.getByText("0 кг")).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(3);
+  });
+
+  it("не показывает статистику для продукта Много еды", async () => {
+    const itemURL = `/api/food/${food.key}`;
+    const fetchMock = vi.fn().mockImplementation(async (input: string) => {
+      if (input === "/api/me") return response({ data: user });
+      if (input === itemURL) return response({ data: { ...food, name: "Много еды", statistics: null } });
+      return response({ data: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MemoryRouter initialEntries={[`/food/${food.key}/edit`]}><App /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByLabelText("Название")).toHaveValue("Много еды"));
+    expect(screen.queryByRole("heading", { name: "Статистика" })).not.toBeInTheDocument();
   });
 
   it("спрашивает подтверждение перед удалением продукта", async () => {

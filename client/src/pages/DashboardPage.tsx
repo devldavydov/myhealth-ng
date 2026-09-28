@@ -20,6 +20,7 @@ type RangeErrors = Partial<Record<keyof Range, string>>;
 const calorieFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 1 });
 const weightFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 2 });
 const activityFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 2 });
+const foodWeightFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 3 });
 const fullDateFormat = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
 const shortDateFormat = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
 
@@ -189,6 +190,23 @@ export function DashboardPage() {
                     <strong>{item.name}</strong>
                     <span>{item.count} раз</span>
                     <b>{activityFormat.format(item.total)} {item.unit}</b>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="weight-panel dashboard-foods" aria-labelledby="top-foods-heading">
+            <div className="section-heading">
+              <h2 id="top-foods-heading">Топ-10 съеденной еды</h2>
+              <span className="food-count" aria-label={`Продуктов: ${data.topFoods.length}`}>{data.topFoods.length}</span>
+            </div>
+            {data.topFoods.length === 0 ? <p className="dashboard-empty">За выбранный период в журнале питания нет записей.</p> : (
+              <ol className="dashboard-food-list">
+                {data.topFoods.map((item) => (
+                  <li key={item.foodKey}>
+                    <div><strong>{item.name}</strong>{item.brand && <span>{item.brand}</span>}</div>
+                    <b>{foodWeightFormat.format(item.totalWeightKg)} кг</b>
                   </li>
                 ))}
               </ol>

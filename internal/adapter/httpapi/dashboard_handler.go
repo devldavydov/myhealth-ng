@@ -33,10 +33,18 @@ type dashboardActivityResponse struct {
 	Unit     string  `json:"unit"`
 }
 
+type dashboardFoodResponse struct {
+	FoodKey       string  `json:"foodKey"`
+	Name          string  `json:"name"`
+	Brand         string  `json:"brand"`
+	TotalWeightKg float64 `json:"totalWeightKg"`
+}
+
 type dashboardResponse struct {
 	Calories     *dashboardCaloriesResponse  `json:"calories"`
 	WeightChange *float64                    `json:"weightChange"`
 	Activities   []dashboardActivityResponse `json:"activities"`
+	TopFoods     []dashboardFoodResponse     `json:"topFoods"`
 }
 
 func newDashboardHandler(dashboard port.DashboardUseCases) *dashboardHandler {
@@ -93,6 +101,7 @@ func toDashboardResponse(result entity.Dashboard) dashboardResponse {
 	response := dashboardResponse{
 		WeightChange: result.WeightChange,
 		Activities:   make([]dashboardActivityResponse, 0, len(result.Activities)),
+		TopFoods:     make([]dashboardFoodResponse, 0, len(result.TopFoods)),
 	}
 	if result.Calories != nil {
 		calories := dashboardCaloriesResponse{
@@ -107,6 +116,11 @@ func toDashboardResponse(result entity.Dashboard) dashboardResponse {
 	for _, item := range result.Activities {
 		response.Activities = append(response.Activities, dashboardActivityResponse{
 			SportKey: item.SportKey, Name: item.Name, Count: item.Count, Total: item.Total, Unit: item.Unit,
+		})
+	}
+	for _, item := range result.TopFoods {
+		response.TopFoods = append(response.TopFoods, dashboardFoodResponse{
+			FoodKey: item.FoodKey, Name: item.Name, Brand: item.Brand, TotalWeightKg: item.TotalWeight / 1000,
 		})
 	}
 	return response

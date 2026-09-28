@@ -85,12 +85,42 @@ func (repository *FoodRepository) List(ctx context.Context, request entity.PageR
 	}, nil
 }
 
-func (repository *FoodRepository) Get(ctx context.Context, key string) (entity.Food, error) {
-	item, err := scanFood(repository.db.QueryRowContext(ctx, `
-SELECT key, name, brand, cal100, prot100, fat100, carb100, comment
-FROM food
-WHERE key = $1`, key))
-	return item, mapQueryError("get food", err)
+func (repository *FoodRepository) Get(ctx context.Context, userID, key string) (entity.FoodDetails, error) {
+	var details entity.FoodDetails
+	var statistics entity.FoodStatistics
+	var firstConsumedDate, lastConsumedDate sql.NullTime
+	var averagePortionWeight sql.NullFloat64
+	err := repository.db.QueryRowContext(ctx, `
+SELECT f.key, f.name, f.brand, f.cal100, f.prot100, f.fat100, f.carb100, f.comment,
+       COALESCE(SUM(j.food_weight), 0)::double precision,
+       MIN(j.dt), MAX(j.dt), AVG(j.food_weight)::double precision
+FROM food f
+LEFT JOIN journal j ON j.food_key = f.key AND j.user_id = $2
+WHERE f.key = $1
+GROUP BY f.key, f.name, f.brand, f.cal100, f.prot100, f.fat100, f.carb100, f.comment`, key, userID).Scan(
+		&details.Food.Key, &details.Food.Name, &details.Food.Brand, &details.Food.Cal100,
+		&details.Food.Prot100, &details.Food.Fat100, &details.Food.Carb100, &details.Food.Comment,
+		&statistics.TotalWeight, &firstConsumedDate, &lastConsumedDate, &averagePortionWeight,
+	)
+	if err != nil {
+		return entity.FoodDetails{}, mapQueryError("get food", err)
+	}
+	if firstConsumedDate.Valid {
+		value := firstConsumedDate.Time
+		statistics.FirstConsumedDate = &value
+	}
+	if lastConsumedDate.Valid {
+		value := lastConsumedDate.Time
+		statistics.LastConsumedDate = &value
+	}
+	if averagePortionWeight.Valid {
+		value := averagePortionWeight.Float64
+		statistics.AveragePortionWeight = &value
+	}
+	if details.Food.Name != entity.FoodStatisticsExcludedName {
+		details.Statistics = &statistics
+	}
+	return details, nil
 }
 
 func (repository *FoodRepository) Create(ctx context.Context, food entity.Food) (entity.Food, error) {

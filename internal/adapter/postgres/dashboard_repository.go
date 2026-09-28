@@ -22,6 +22,7 @@ func (repository *DashboardRepository) Load(ctx context.Context, userID string, 
 		CalorieDays: make([]entity.DashboardCalorieSourceDay, 0),
 		Weights:     make([]entity.Weight, 0),
 		Activities:  make([]entity.DashboardActivity, 0),
+		TopFoods:    make([]entity.DashboardFood, 0),
 	}
 	var defaultLimit int
 	err := repository.db.QueryRowContext(ctx, `
@@ -43,7 +44,36 @@ WHERE user_id = $1`, userID).Scan(&defaultLimit)
 	if err := repository.loadActivities(ctx, userID, period, &result); err != nil {
 		return entity.DashboardSource{}, err
 	}
+	if err := repository.loadTopFoods(ctx, userID, period, &result); err != nil {
+		return entity.DashboardSource{}, err
+	}
 	return result, nil
+}
+
+func (repository *DashboardRepository) loadTopFoods(ctx context.Context, userID string, period entity.DashboardRange, result *entity.DashboardSource) error {
+	rows, err := repository.db.QueryContext(ctx, `
+SELECT f.key, f.name, f.brand, SUM(j.food_weight)::double precision
+FROM journal j
+JOIN food f ON f.key = j.food_key
+WHERE j.user_id = $1 AND j.dt >= $2 AND j.dt <= $3 AND f.name <> $4
+GROUP BY f.key, f.name, f.brand
+ORDER BY SUM(j.food_weight) DESC, lower(f.name), lower(f.brand), f.key
+LIMIT 10`, userID, period.From, period.To, entity.FoodStatisticsExcludedName)
+	if err != nil {
+		return fmt.Errorf("load dashboard top foods: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item entity.DashboardFood
+		if err := rows.Scan(&item.FoodKey, &item.Name, &item.Brand, &item.TotalWeight); err != nil {
+			return fmt.Errorf("scan dashboard top food: %w", err)
+		}
+		result.TopFoods = append(result.TopFoods, item)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate dashboard top foods: %w", err)
+	}
+	return nil
 }
 
 func (repository *DashboardRepository) loadCalorieDays(ctx context.Context, userID string, period entity.DashboardRange, result *entity.DashboardSource) error {

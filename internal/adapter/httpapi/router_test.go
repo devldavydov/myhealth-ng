@@ -33,6 +33,8 @@ var sampleBundle = entity.Bundle{
 
 type foodUseCasesStub struct {
 	items       []entity.Food
+	details     *entity.FoodDetails
+	userID      string
 	request     entity.PageRequest
 	createdData entity.FoodData
 	updatedKey  string
@@ -156,8 +158,20 @@ func (stub *foodUseCasesStub) List(_ context.Context, request entity.PageRequest
 	stub.request = request
 	return entity.Page[entity.Food]{Items: stub.items, Page: request.Page, PageSize: request.PageSize, Total: len(stub.items), TotalPages: 1}, stub.err
 }
-func (stub *foodUseCasesStub) Get(_ context.Context, _ string) (entity.Food, error) {
-	return sampleFood, stub.err
+func (stub *foodUseCasesStub) Get(_ context.Context, userID, _ string) (entity.FoodDetails, error) {
+	stub.userID = userID
+	if stub.details != nil {
+		return *stub.details, stub.err
+	}
+	first := time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)
+	last := time.Date(2026, time.March, 4, 0, 0, 0, 0, time.UTC)
+	average := 250.5
+	return entity.FoodDetails{
+		Food: sampleFood,
+		Statistics: &entity.FoodStatistics{
+			TotalWeight: 1500, FirstConsumedDate: &first, LastConsumedDate: &last, AveragePortionWeight: &average,
+		},
+	}, stub.err
 }
 func (stub *foodUseCasesStub) Create(_ context.Context, data entity.FoodData) (entity.Food, error) {
 	stub.createdData = data
@@ -191,6 +205,20 @@ func TestFoodRoutes(t *testing.T) {
 	}
 	if err := json.Unmarshal(list.Body.Bytes(), &listed); err != nil || len(listed.Data) != 1 || listed.Data[0]["key"] != foodKey || listed.Pagination.Page != 2 || listed.Pagination.PageSize != 50 || listed.Pagination.Total != 1 || listed.Pagination.TotalPages != 1 {
 		t.Fatalf("unexpected list: %s, err=%v", list.Body, err)
+	}
+	details := request(router, http.MethodGet, "/api/food/"+foodKey, "")
+	if details.Code != http.StatusOK || stub.userID != "00000000-0000-4000-8000-000000000000" {
+		t.Fatalf("get status=%d user=%q body=%s", details.Code, stub.userID, details.Body)
+	}
+	for _, fragment := range []string{`"totalWeightKg":1.5`, `"firstConsumedDate":"2026-01-02"`, `"lastConsumedDate":"2026-03-04"`, `"averagePortionWeightGrams":250.5`} {
+		if !strings.Contains(details.Body.String(), fragment) {
+			t.Fatalf("missing %s in %s", fragment, details.Body)
+		}
+	}
+	specialStub := &foodUseCasesStub{details: &entity.FoodDetails{Food: entity.Food{Key: foodKey, Name: entity.FoodStatisticsExcludedName}}}
+	special := request(newRouter(specialStub), http.MethodGet, "/api/food/"+foodKey, "")
+	if special.Code != http.StatusOK || !strings.Contains(special.Body.String(), `"statistics":null`) {
+		t.Fatalf("special food response status=%d body=%s", special.Code, special.Body)
 	}
 
 	body := `{"name":"Творог","brand":"Ферма","cal100":120,"prot100":18,"fat100":5,"carb100":3,"comment":"5%"}`

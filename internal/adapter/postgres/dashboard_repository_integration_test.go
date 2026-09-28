@@ -42,10 +42,16 @@ func TestDashboardRepositoryWithPostgres(t *testing.T) {
 
 	statements := []string{
 		`INSERT INTO user_settings (user_id, default_daily_calorie_limit) VALUES ('user-a', 2000)`,
-		`INSERT INTO food (key, name, brand, cal100, prot100, fat100, carb100, comment) VALUES ('food-a', 'Тест', '', 100, 1, 1, 1, '')`,
+		`INSERT INTO food (key, name, brand, cal100, prot100, fat100, carb100, comment) VALUES
+            ('food-a', 'Тест', '', 100, 1, 1, 1, ''),
+			('food-b', 'Банан', 'Ферма', 90, 1, 1, 20, ''),
+			('food-placeholder', 'Много еды', '', 1, 0, 0, 0, '')`,
 		`INSERT INTO journal (user_id, dt, meal, food_key, food_weight) VALUES
             ('user-a', '2026-09-01', 'завтрак', 'food-a', 500),
             ('user-a', '2026-09-30', 'ужин', 'food-a', 1000),
+            ('user-a', '2026-09-15', 'обед', 'food-b', 2000),
+			('user-a', '2026-09-15', 'ужин', 'food-placeholder', 50000),
+            ('user-a', '2026-08-31', 'обед', 'food-b', 7000),
             ('user-b', '2026-09-15', 'обед', 'food-a', 9000)`,
 		`INSERT INTO act_calories (user_id, dt, value) VALUES ('user-a', '2026-09-30', 1200)`,
 		`INSERT INTO weight (user_id, dt, value) VALUES
@@ -78,11 +84,11 @@ func TestDashboardRepositoryWithPostgres(t *testing.T) {
 	if result.DefaultDailyCalorieLimit == nil || *result.DefaultDailyCalorieLimit != 2000 {
 		t.Fatalf("default limit=%v", result.DefaultDailyCalorieLimit)
 	}
-	if len(result.CalorieDays) != 2 || result.CalorieDays[0].Consumed != 500 || result.CalorieDays[1].Consumed != 1000 {
+	if len(result.CalorieDays) != 3 || result.CalorieDays[0].Consumed != 500 || result.CalorieDays[1].Consumed != 2300 || result.CalorieDays[2].Consumed != 1000 {
 		t.Fatalf("calorie days=%+v", result.CalorieDays)
 	}
-	if result.CalorieDays[1].ActiveLimit == nil || *result.CalorieDays[1].ActiveLimit != 1200 {
-		t.Fatalf("active limit=%v", result.CalorieDays[1].ActiveLimit)
+	if result.CalorieDays[2].ActiveLimit == nil || *result.CalorieDays[2].ActiveLimit != 1200 {
+		t.Fatalf("active limit=%v", result.CalorieDays[2].ActiveLimit)
 	}
 	if len(result.Weights) != 2 || result.Weights[0].Value != 82 || result.Weights[1].Value != 80.5 {
 		t.Fatalf("weights=%+v", result.Weights)
@@ -90,17 +96,20 @@ func TestDashboardRepositoryWithPostgres(t *testing.T) {
 	if len(result.Activities) != 2 || result.Activities[0].SportKey != "walk" || result.Activities[0].Count != 2 || math.Abs(result.Activities[0].Total-20) > .0001 {
 		t.Fatalf("activities=%+v", result.Activities)
 	}
+	if len(result.TopFoods) != 2 || result.TopFoods[0].FoodKey != "food-b" || result.TopFoods[0].TotalWeight != 2000 || result.TopFoods[1].FoodKey != "food-a" || result.TopFoods[1].TotalWeight != 1500 {
+		t.Fatalf("top foods=%+v", result.TopFoods)
+	}
 
 	if _, err := db.ExecContext(ctx, `UPDATE food SET cal100 = 200 WHERE key = 'food-a'`); err != nil {
 		t.Fatal(err)
 	}
 	updated, err := repository.Load(ctx, "user-a", period)
-	if err != nil || len(updated.CalorieDays) != 2 || updated.CalorieDays[0].Consumed != 1000 {
+	if err != nil || len(updated.CalorieDays) != 3 || updated.CalorieDays[0].Consumed != 1000 {
 		t.Fatalf("updated calorie days=%+v err=%v", updated.CalorieDays, err)
 	}
 
 	other, err := repository.Load(ctx, "user-b", period)
-	if err != nil || other.DefaultDailyCalorieLimit != nil || len(other.CalorieDays) != 0 || len(other.Weights) != 1 || len(other.Activities) != 1 {
+	if err != nil || other.DefaultDailyCalorieLimit != nil || len(other.CalorieDays) != 0 || len(other.Weights) != 1 || len(other.Activities) != 1 || len(other.TopFoods) != 1 || other.TopFoods[0].TotalWeight != 9000 {
 		t.Fatalf("other user=%+v err=%v", other, err)
 	}
 }

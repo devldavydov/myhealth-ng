@@ -21,11 +21,19 @@ type DashboardActivity struct {
 	Unit     string
 }
 
+type DashboardFood struct {
+	FoodKey     string
+	Name        string
+	Brand       string
+	TotalWeight float64
+}
+
 type DashboardSource struct {
 	DefaultDailyCalorieLimit *int
 	CalorieDays              []DashboardCalorieSourceDay
 	Weights                  []Weight
 	Activities               []DashboardActivity
+	TopFoods                 []DashboardFood
 }
 
 type DashboardCalorieDay struct {
@@ -42,4 +50,5 @@ type Dashboard struct {
 	Calories     *DashboardCalories
 	WeightChange *float64
 	Activities   []DashboardActivity
+	TopFoods     []DashboardFood
 }

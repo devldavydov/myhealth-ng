@@ -15,6 +15,8 @@ const testKey = "3f67c05f-7c9e-4cb5-b26a-f9ce5b065865"
 type foodRepositoryStub struct {
 	items      []entity.Food
 	request    entity.PageRequest
+	userID     string
+	getKey     string
 	created    entity.Food
 	updatedKey string
 	updated    entity.FoodData
@@ -26,11 +28,12 @@ func (stub *foodRepositoryStub) List(_ context.Context, request entity.PageReque
 	stub.request = request
 	return entity.Page[entity.Food]{Items: stub.items, Page: request.Page, PageSize: request.PageSize, Total: len(stub.items)}, stub.err
 }
-func (stub *foodRepositoryStub) Get(_ context.Context, _ string) (entity.Food, error) {
+func (stub *foodRepositoryStub) Get(_ context.Context, userID, key string) (entity.FoodDetails, error) {
+	stub.userID, stub.getKey = userID, key
 	if len(stub.items) == 0 {
-		return entity.Food{}, stub.err
+		return entity.FoodDetails{}, stub.err
 	}
-	return stub.items[0], stub.err
+	return entity.FoodDetails{Food: stub.items[0]}, stub.err
 }
 func (stub *foodRepositoryStub) Create(_ context.Context, food entity.Food) (entity.Food, error) {
 	stub.created = food
@@ -87,6 +90,20 @@ func TestFoodListTrimsQuery(t *testing.T) {
 	}
 }
 
+func TestFoodGetNormalizesUserAndKey(t *testing.T) {
+	repository := &foodRepositoryStub{items: []entity.Food{{Key: testKey, Name: "Творог"}}}
+	useCases := NewFood(repository)
+	if _, err := useCases.Get(context.Background(), " user-1 ", " "+testKey+" "); err != nil {
+		t.Fatal(err)
+	}
+	if repository.userID != "user-1" || repository.getKey != testKey {
+		t.Fatalf("scope = user %q key %q", repository.userID, repository.getKey)
+	}
+	if _, err := useCases.Get(context.Background(), " ", testKey); err == nil {
+		t.Fatal("empty user must be rejected")
+	}
+}
+
 func TestFoodUpdateAndDeleteValidateKey(t *testing.T) {
 	repository := &foodRepositoryStub{}
 	useCases := NewFood(repository)
@@ -111,7 +128,7 @@ func TestFoodUpdateAndDeleteValidateKey(t *testing.T) {
 func TestFoodPropagatesRepositoryError(t *testing.T) {
 	repository := &foodRepositoryStub{err: port.ErrFoodNotFound}
 	useCases := NewFood(repository)
-	if _, err := useCases.Get(context.Background(), testKey); !errors.Is(err, port.ErrFoodNotFound) {
+	if _, err := useCases.Get(context.Background(), "user", testKey); !errors.Is(err, port.ErrFoodNotFound) {
 		t.Fatalf("error = %v", err)
 	}
 }

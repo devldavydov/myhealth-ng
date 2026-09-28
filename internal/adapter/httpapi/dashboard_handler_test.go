@@ -33,6 +33,7 @@ func TestDashboardRoute(t *testing.T) {
 		},
 		WeightChange: &change,
 		Activities:   []entity.DashboardActivity{{SportKey: "walk", Name: "Ходьба", Count: 3, Total: 20, Unit: "км"}},
+		TopFoods:     []entity.DashboardFood{{FoodKey: "food-a", Name: "Творог", Brand: "Ферма", TotalWeight: 1500}},
 	}}
 	router := dashboardRouter(stub)
 	response := request(router, http.MethodGet, "/api/dashboard?from=2026-09-01&to=2026-09-30", "")
@@ -43,7 +44,7 @@ func TestDashboardRoute(t *testing.T) {
 		t.Fatalf("period=%+v", stub.period)
 	}
 	body := response.Body.String()
-	for _, fragment := range []string{`"balance":200`, `"average":50`, `"weightChange":-1.5`, `"name":"Ходьба"`, `"activities":[`} {
+	for _, fragment := range []string{`"balance":200`, `"average":50`, `"weightChange":-1.5`, `"name":"Ходьба"`, `"activities":[`, `"topFoods":[`, `"totalWeightKg":1.5`} {
 		if !strings.Contains(body, fragment) {
 			t.Fatalf("missing %s in %s", fragment, body)
 		}

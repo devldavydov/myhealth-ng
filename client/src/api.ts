@@ -9,6 +9,17 @@ export interface Food {
   comment: string;
 }
 
+export interface FoodStatistics {
+  totalWeightKg: number;
+  firstConsumedDate: string | null;
+  lastConsumedDate: string | null;
+  averagePortionWeightGrams: number | null;
+}
+
+export interface FoodDetails extends Food {
+  statistics: FoodStatistics | null;
+}
+
 export type FoodData = Omit<Food, "key">;
 
 export type PageSize = 10 | 20 | 50;
@@ -143,10 +154,18 @@ export interface DashboardActivity {
   unit: string;
 }
 
+export interface DashboardFood {
+  foodKey: string;
+  name: string;
+  brand: string;
+  totalWeightKg: number;
+}
+
 export interface DashboardData {
   calories: DashboardCalories | null;
   weightChange: number | null;
   activities: DashboardActivity[];
+  topFoods: DashboardFood[];
 }
 
 export class ApiError extends Error {
@@ -250,8 +269,8 @@ export async function getFood(query: PageQuery = {}): Promise<Page<Food>> {
   return getPage<Food>("/api/food", query);
 }
 
-export async function getFoodByKey(key: string): Promise<Food> {
-  return (await apiRequest<{ data: Food }>(`/api/food/${encodeURIComponent(key)}`)).data;
+export async function getFoodByKey(key: string): Promise<FoodDetails> {
+  return (await apiRequest<{ data: FoodDetails }>(`/api/food/${encodeURIComponent(key)}`)).data;
 }
 
 export async function createFood(data: FoodData): Promise<Food> {

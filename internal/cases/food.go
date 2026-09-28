@@ -28,11 +28,17 @@ func (food *Food) List(ctx context.Context, request entity.PageRequest) (entity.
 	return food.repository.List(ctx, request)
 }
 
-func (food *Food) Get(ctx context.Context, key string) (entity.Food, error) {
+func (food *Food) Get(ctx context.Context, userID, key string) (entity.FoodDetails, error) {
+	userID = strings.TrimSpace(userID)
+	details := make(map[string][]string)
+	validateUserID(details, userID)
 	if err := validateKey(key); err != nil {
-		return entity.Food{}, err
+		return entity.FoodDetails{}, err
 	}
-	return food.repository.Get(ctx, strings.ToLower(strings.TrimSpace(key)))
+	if len(details) > 0 {
+		return entity.FoodDetails{}, &entity.ValidationError{Fields: details}
+	}
+	return food.repository.Get(ctx, userID, strings.ToLower(strings.TrimSpace(key)))
 }
 
 func (food *Food) Create(ctx context.Context, data entity.FoodData) (entity.Food, error) {

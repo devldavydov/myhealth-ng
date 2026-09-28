@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, createFood, getFoodByKey, updateFood, type Food, type FoodData } from "../api";
+import { ApiError, createFood, getFoodByKey, updateFood, type Food, type FoodData, type FoodStatistics } from "../api";
 import { formatEditableNumber } from "../numeric";
 
 type NutritionMode = "per100" | "portion";
@@ -22,6 +22,9 @@ const emptyForm: FormState = {
 };
 const numericFields: NumericField[] = ["cal100", "prot100", "fat100", "carb100"];
 const numberFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 2 });
+const kilogramFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 3 });
+const portionFormat = new Intl.NumberFormat("ru", { maximumFractionDigits: 1 });
+const consumedDateFormat = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 function normalizeNumericInput(value: string): string {
   const digitsAndSeparators = value.replace(/[^0-9.,]/g, "");
@@ -33,6 +36,10 @@ function normalizeNumericInput(value: string): string {
 function parseNumber(value: string): number {
   const normalized = value.trim().replace(",", ".");
   return normalized === "" ? Number.NaN : Number(normalized);
+}
+
+function formatConsumedDate(value: string | null): string {
+  return value === null ? "—" : consumedDateFormat.format(new Date(`${value}T00:00:00`));
 }
 
 function foodToForm(food: Food): FormState {
@@ -82,6 +89,7 @@ export function FoodFormPage() {
   const navigate = useNavigate();
   const editing = key !== undefined;
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [statistics, setStatistics] = useState<FoodStatistics | null>(null);
   const [mode, setMode] = useState<NutritionMode>("per100");
   const [commentCustomized, setCommentCustomized] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -95,8 +103,14 @@ export function FoodFormPage() {
     let cancelled = false;
     setLoading(true);
     setLoadError("");
+    setStatistics(null);
     void getFoodByKey(key)
-      .then((food) => { if (!cancelled) setForm(foodToForm(food)); })
+      .then((food) => {
+        if (!cancelled) {
+          setForm(foodToForm(food));
+          setStatistics(food.statistics);
+        }
+      })
       .catch((requestError: unknown) => {
         if (!cancelled) setLoadError(requestError instanceof Error ? requestError.message : "Не удалось загрузить продукт");
       })
@@ -179,6 +193,7 @@ export function FoodFormPage() {
       {loading ? <p className="muted">Загрузка продукта…</p> : loadError ? (
         <div className="error" role="alert">{loadError}</div>
       ) : (
+        <>
         <section className="food-form-card">
           {error && <div className="error" role="alert">{error}</div>}
           <form noValidate onSubmit={handleSubmit}>
@@ -234,6 +249,18 @@ export function FoodFormPage() {
             </div>
           </form>
         </section>
+        {editing && statistics && (
+          <section className="food-form-card food-statistics-card" aria-labelledby="food-statistics-heading">
+            <h2 id="food-statistics-heading">Статистика</h2>
+            <div className="food-statistics-grid">
+              <div><span>Первый приём</span><strong>{formatConsumedDate(statistics.firstConsumedDate)}</strong></div>
+              <div><span>Последний приём</span><strong>{formatConsumedDate(statistics.lastConsumedDate)}</strong></div>
+              <div><span>Съедено всего</span><strong>{kilogramFormat.format(statistics.totalWeightKg)} кг</strong></div>
+              <div><span>Средняя порция</span><strong>{statistics.averagePortionWeightGrams === null ? "—" : `${portionFormat.format(statistics.averagePortionWeightGrams)} г`}</strong></div>
+            </div>
+          </section>
+        )}
+        </>
       )}
     </div>
   );

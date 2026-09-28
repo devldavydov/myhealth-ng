@@ -37,7 +37,8 @@ describe("страница аналитики", () => {
         average: 0
       },
       weightChange: -1.5,
-      activities: [{ sportKey: "walk", name: "Ходьба", count: 2, total: 20, unit: "км" }]
+      activities: [{ sportKey: "walk", name: "Ходьба", count: 2, total: 20, unit: "км" }],
+      topFoods: [{ foodKey: "food-a", name: "Творог", brand: "Ферма", totalWeightKg: 1.505 }]
     }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -52,14 +53,19 @@ describe("страница аналитики", () => {
     expect(screen.getByText("Ходьба")).toBeInTheDocument();
     expect(screen.getByText("2 раз")).toBeInTheDocument();
     expect(screen.getByText("20 км")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Топ-10 съеденной еды" })).toBeInTheDocument();
+    expect(screen.getByText("Творог")).toBeInTheDocument();
+    expect(screen.getByText("Ферма")).toBeInTheDocument();
+    expect(screen.getByText("1,505 кг")).toBeInTheDocument();
   });
 
   it("просит задать дефолт и валидирует диапазон до запроса", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response({ calories: null, weightChange: null, activities: [] }));
+    const fetchMock = vi.fn().mockResolvedValue(response({ calories: null, weightChange: null, activities: [], topFoods: [] }));
     vi.stubGlobal("fetch", fetchMock);
     render(<MemoryRouter><DashboardPage /></MemoryRouter>);
 
     expect(await screen.findByText(/задайте/i)).toBeInTheDocument();
+    expect(screen.getByText("За выбранный период в журнале питания нет записей.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /дефолтный лимит/i })).toHaveAttribute("href", "/settings");
     fireEvent.change(screen.getByLabelText("От"), { target: { value: "2026-10-01" } });
     fireEvent.change(screen.getByLabelText("До"), { target: { value: "2026-09-01" } });

@@ -36,6 +36,7 @@ func TestDashboardCalculatesSummary(t *testing.T) {
 			{DT: dashboardDate(20), Value: 80.5},
 		},
 		Activities: []entity.DashboardActivity{{SportKey: "walk", Name: "Ходьба", Count: 3, Total: 20, Unit: "км"}},
+		TopFoods:   []entity.DashboardFood{{FoodKey: "food-a", Name: "Творог", Brand: "Ферма", TotalWeight: 1500}},
 	}}
 	result, err := NewDashboard(stub).Get(context.Background(), " user-a ", entity.DashboardRange{
 		From: time.Date(2026, time.September, 1, 14, 0, 0, 0, time.Local),
@@ -62,6 +63,9 @@ func TestDashboardCalculatesSummary(t *testing.T) {
 	if len(result.Activities) != 1 || result.Activities[0].Count != 3 {
 		t.Fatalf("activities=%+v", result.Activities)
 	}
+	if len(result.TopFoods) != 1 || result.TopFoods[0].TotalWeight != 1500 {
+		t.Fatalf("top foods=%+v", result.TopFoods)
+	}
 }
 
 func TestDashboardRequiresDefaultForCaloriesAndTwoWeights(t *testing.T) {
@@ -73,7 +77,7 @@ func TestDashboardRequiresDefaultForCaloriesAndTwoWeights(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Calories != nil || result.WeightChange != nil || result.Activities == nil {
+	if result.Calories != nil || result.WeightChange != nil || result.Activities == nil || result.TopFoods == nil {
 		t.Fatalf("unexpected empty result: %+v", result)
 	}
 }

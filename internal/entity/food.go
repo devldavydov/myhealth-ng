@@ -1,6 +1,11 @@
 package entity
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
+
+const FoodStatisticsExcludedName = "Много еды"
 
 type Food struct {
 	Key     string
@@ -21,6 +26,18 @@ type FoodData struct {
 	Fat100  float64
 	Carb100 float64
 	Comment string
+}
+
+type FoodStatistics struct {
+	TotalWeight          float64
+	FirstConsumedDate    *time.Time
+	LastConsumedDate     *time.Time
+	AveragePortionWeight *float64
+}
+
+type FoodDetails struct {
+	Food       Food
+	Statistics *FoodStatistics
 }
 
 type ValidationError struct {
